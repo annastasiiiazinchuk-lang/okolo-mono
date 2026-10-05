@@ -86,6 +86,55 @@ describe('Sitniks order mapping', () => {
     expect(payload.payment).toBeUndefined();
   });
 
+  test('sends a human customer source for Instagram product sync orders', () => {
+    const payload = buildSitniksOrderPayload({
+      ...basePayload,
+      comment: [
+        'Instagram/Telegram: ТЕСТ',
+        "Як зв'язатись: Напишіть мені",
+        'ЗВІДКИ КЛІЄНТ',
+        'Google',
+      ].join('\n'),
+      tracking: {
+        utm_source: 'google',
+        utm_medium: 'product_sync',
+        utm_campaign: 'sag_organic',
+      },
+      utm: {},
+    }, { id: 1302, name: '#1302' });
+
+    expect(String(payload.clientComment)).not.toContain('ЗВІДКИ КЛІЄНТ');
+    expect(String(payload.managerComment)).toContain('ЗВІДКИ КЛІЄНТ');
+    expect(String(payload.managerComment)).toContain('Instagram');
+    expect(String(payload.managerComment)).toContain('UTM source: google');
+    expect(String(payload.managerComment)).toContain('UTM medium: product_sync');
+    expect(String(payload.managerComment)).toContain('UTM campaign: sag_organic');
+    expect(payload.utm).toEqual({
+      source: 'Instagram',
+      medium: 'product_sync',
+      campaign: 'sag_organic',
+    });
+  });
+
+  test('does not send numeric UTM source values to Sitniks', () => {
+    const payload = buildSitniksOrderPayload({
+      ...basePayload,
+      tracking: {
+        utm_source: '431612592129',
+        utm_medium: 'product_sync',
+        utm_campaign: 'sag_organic',
+      },
+      utm: {},
+    }, { id: 1303, name: '#1303' });
+
+    expect(String(payload.managerComment)).not.toContain('431612592129');
+    expect(payload.utm).toEqual({
+      source: 'Instagram',
+      medium: 'product_sync',
+      campaign: 'sag_organic',
+    });
+  });
+
   test('builds product rows by title without SKU', () => {
     const products = buildSitniksProducts(basePayload);
 

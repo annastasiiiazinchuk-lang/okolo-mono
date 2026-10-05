@@ -1244,7 +1244,8 @@
   }
 
   function detectTrafficSource(tracking) {
-    return trafficSourceFromText(tracking.traffic_source)
+    return (/product_sync/i.test(String(tracking.utm_medium || '')) && /(^|[_-])sag([_-]|$)|instagram|ig/i.test(String(tracking.utm_campaign || '')) ? 'Instagram' : '')
+      || trafficSourceFromText(tracking.traffic_source)
       || trafficSourceFromText(`${tracking.utm_source || ''} ${tracking.referrer || ''}`)
       || (tracking.gclid || tracking.gbraid || tracking.wbraid ? 'Google' : '')
       || (tracking.fbclid || tracking.fbc ? 'Facebook' : '')
@@ -1266,11 +1267,22 @@
     return text ? `${label}: ${text}` : '';
   }
 
+  function readableUtmSource(tracking) {
+    const directSource = humanTrackingValue(tracking.utm_source);
+    if (directSource) return directSource;
+    const knownSource = trafficSourceFromText(`${tracking.traffic_source || ''} ${tracking.referrer || ''}`);
+    if (knownSource) return knownSource.toLocaleLowerCase('en-US');
+    if (tracking.gclid || tracking.gbraid || tracking.wbraid) return 'google';
+    if (tracking.fbclid || tracking.fbc) return 'facebook';
+    if (tracking.ttclid) return 'tiktok';
+    return '';
+  }
+
   function buildTrackingComment(tracking) {
     const source = detectTrafficSource(tracking);
     const lines = [
       source,
-      trackingLine('UTM source', tracking.utm_source),
+      trackingLine('UTM source', readableUtmSource(tracking)),
       trackingLine('UTM medium', tracking.utm_medium),
       trackingLine('UTM campaign', tracking.utm_campaign),
       trackingLine('UTM content', tracking.utm_content),

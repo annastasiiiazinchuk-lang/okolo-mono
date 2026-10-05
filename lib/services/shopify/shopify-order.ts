@@ -262,29 +262,62 @@ function humanTrackingValue(value: unknown): string {
   return text;
 }
 
+function isInstagramProductSync(tracking: Record<string, unknown>): boolean {
+  return /product_sync/i.test(trackingValue(tracking, 'utm_medium'))
+    && /(^|[_-])sag([_-]|$)|instagram|ig/i.test(trackingValue(tracking, 'utm_campaign'));
+}
+
+function trafficSourceFromText(value: string): string {
+  if (/instagram|(^|\W)ig($|\W)/i.test(value)) return 'Instagram';
+  if (/facebook|(^|\W)fb($|\W)/i.test(value)) return 'Facebook';
+  if (/google/i.test(value)) return 'Google';
+  if (/tiktok|(^|\W)tt($|\W)/i.test(value)) return 'TikTok';
+  return '';
+}
+
 function detectTrafficSourceLabel(tracking: Record<string, unknown>): string {
   const source = humanTrackingValue(trackingValue(tracking, 'traffic_source')) || humanTrackingValue(trackingValue(tracking, 'utm_source'));
   const referrer = trackingValue(tracking, 'referrer');
   const joined = `${source} ${referrer}`.toLocaleLowerCase('uk-UA');
+  const directSource = trafficSourceFromText(joined);
 
-  if (/instagram|(^|\W)ig($|\W)/i.test(joined)) return 'Instagram';
-  if (/facebook|(^|\W)fb($|\W)/i.test(joined) || trackingValue(tracking, 'fbclid') || trackingValue(tracking, 'fbc')) return 'Facebook';
-  if (/google/i.test(joined) || trackingValue(tracking, 'gclid') || trackingValue(tracking, 'gbraid') || trackingValue(tracking, 'wbraid')) return 'Google';
-  if (/tiktok|(^|\W)tt($|\W)/i.test(joined) || trackingValue(tracking, 'ttclid')) return 'TikTok';
+  if (directSource === 'Instagram') return 'Instagram';
+  if (isInstagramProductSync(tracking)) return 'Instagram';
+  if (directSource) return directSource;
+  if (trackingValue(tracking, 'fbclid') || trackingValue(tracking, 'fbc')) return 'Facebook';
+  if (trackingValue(tracking, 'gclid') || trackingValue(tracking, 'gbraid') || trackingValue(tracking, 'wbraid')) return 'Google';
+  if (trackingValue(tracking, 'ttclid')) return 'TikTok';
   return source;
 }
 
-export function buildCustomerSourceComment(body: CheckoutPayload): string {
-  if (/ЗВІДКИ КЛІЄНТ/u.test(asString(body.comment))) return '';
+function readableUtmSource(tracking: Record<string, unknown>): string {
+  const source = humanTrackingValue(trackingValue(tracking, 'utm_source'));
+  if (source) return source;
 
-  const tracking = {
+  const knownSource = trafficSourceFromText([
+    trackingValue(tracking, 'traffic_source'),
+    trackingValue(tracking, 'referrer'),
+  ].join(' ').toLocaleLowerCase('uk-UA'));
+  if (knownSource) return knownSource.toLocaleLowerCase('en-US');
+  if (trackingValue(tracking, 'gclid') || trackingValue(tracking, 'gbraid') || trackingValue(tracking, 'wbraid')) return 'google';
+  if (trackingValue(tracking, 'fbclid') || trackingValue(tracking, 'fbc')) return 'facebook';
+  if (trackingValue(tracking, 'ttclid')) return 'tiktok';
+  return '';
+}
+
+export function stripCustomerSourceComment(note: string): string {
+  return note.replace(/\n*ЗВІДКИ КЛІЄНТ[\s\S]*$/u, '').trim();
+}
+
+export function buildCustomerSourceComment(body: CheckoutPayload): string {
+  const tracking: Record<string, unknown> = {
     ...(body.utm || {}),
     ...(body.tracking || {}),
   };
   const sourceLabel = detectTrafficSourceLabel(tracking);
   const lines = [
     sourceLabel,
-    humanTrackingValue(trackingValue(tracking, 'utm_source')) ? `UTM source: ${humanTrackingValue(trackingValue(tracking, 'utm_source'))}` : '',
+    readableUtmSource(tracking) ? `UTM source: ${readableUtmSource(tracking)}` : '',
     humanTrackingValue(trackingValue(tracking, 'utm_medium')) ? `UTM medium: ${humanTrackingValue(trackingValue(tracking, 'utm_medium'))}` : '',
     humanTrackingValue(trackingValue(tracking, 'utm_campaign')) ? `UTM campaign: ${humanTrackingValue(trackingValue(tracking, 'utm_campaign'))}` : '',
     humanTrackingValue(trackingValue(tracking, 'utm_content')) ? `UTM content: ${humanTrackingValue(trackingValue(tracking, 'utm_content'))}` : '',
@@ -319,14 +352,29 @@ function buildLegacyUtmValue(body: CheckoutPayload): string {
   const orderedValues = orderedEntries
     .map(([label, keys]) => {
       const value = keys.map((key) => asString(tracking[key])).find(Boolean);
+      if (label === 'utm_source') {
+        const source = readableUtmSource(tracking);
+        return source ? `${label}: ${source}` : '';
+      }
+      if (label.startsWith('utm_')) {
+        const humanValue = humanTrackingValue(value);
+        return humanValue ? `${label}: ${humanValue}` : '';
+      }
       return value ? `${label}: ${value}` : '';
     })
     .filter(Boolean);
   const extraUtmValues = Object.entries(tracking)
     .filter(([key, value]) => key.startsWith('utm_') && !handledTrackingKeys.has(key) && asString(value))
-    .map(([key, value]) => `${key}: ${asString(value)}`);
+    .map(([key, value]) => {
+      const humanValue = humanTrackingValue(value);
+      return humanValue ? `${key}: ${humanValue}` : '';
+    })
+    .filter(Boolean);
 
-  return [...orderedValues, ...extraUtmValues].join('; ');
+  const sourceLabel = detectTrafficSourceLabel(tracking);
+  const sourceValues = sourceLabel ? [`traffic_source: ${sourceLabel}`] : [];
+
+  return [...sourceValues, ...orderedValues, ...extraUtmValues].join('; ');
 }
 
 function getCountryCode(countryOrCode: string): string {
@@ -344,7 +392,7 @@ export function buildInternationalCheckoutComment(body: CheckoutPayload): string
   const apartment = asString(shipping.apartment);
   const postcode = asString(shipping.postcode);
   const countryCode = getCountryCode(asString(shipping.country_code) || country);
-  const customerComment = asString(body.comment);
+  const customerComment = stripCustomerSourceComment(asString(body.comment));
 
   return [
     'Тип доставки: закордон',
@@ -402,9 +450,10 @@ function buildLegacyIntegrationNoteAttributes(
     paidAmount,
     invoiceId: options.invoiceId,
   });
+  const customerSourceComment = buildCustomerSourceComment(body);
   const commentBase = [
-    isInternational ? buildInternationalCheckoutComment(body) : asString(body.comment),
-    buildCustomerSourceComment(body),
+    isInternational ? buildInternationalCheckoutComment(body) : stripCustomerSourceComment(asString(body.comment)),
+    customerSourceComment,
   ].filter(Boolean).join('\n\n');
   const internationalFields = isInternational
     ? [
@@ -436,6 +485,8 @@ function buildLegacyIntegrationNoteAttributes(
     { name: '_zip-code', value: postcode },
     { name: 'Payment', value: legacyPaymentLabel(body, isInternational) },
     { name: 'Comment', value: withPaymentCrmComment(commentBase, paymentCrmComment) },
+    { name: 'Customer source', value: customerSourceComment },
+    { name: 'ЗВІДКИ КЛІЄНТ', value: customerSourceComment.replace(/^ЗВІДКИ КЛІЄНТ\n?/u, '') },
     { name: 'Shipping', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'За тарифами перевізника' },
     { name: '_provider', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'Нова пошта' },
     { name: '_country', value: country },
@@ -534,11 +585,16 @@ export function buildLineItems(body: CheckoutPayload) {
 }
 
 export function buildTrackingNoteAttributes(body: CheckoutPayload) {
-  const tracking = {
+  const rawTracking = {
     ...(body.utm || {}),
     ...(body.tracking || {}),
   };
+  const tracking: Record<string, unknown> = {
+    ...rawTracking,
+    traffic_source: detectTrafficSourceLabel(rawTracking) || asString(rawTracking.traffic_source),
+  };
   const allowedKeys = [
+    'traffic_source',
     'utm_source',
     'utm_medium',
     'utm_campaign',
@@ -614,7 +670,7 @@ export function buildShopifyOrderPayload(
   const shippingPrice = 0;
   const rawBaseOrderNote = isInternationalCheckout(body)
     ? buildInternationalCheckoutComment(body)
-    : asString(body.comment);
+    : stripCustomerSourceComment(asString(body.comment));
   const baseOrderNote = [
     rawBaseOrderNote,
     buildCustomerSourceComment(body),
@@ -660,6 +716,7 @@ export function buildShopifyOrderPayload(
         paidAmount,
         invoiceId: options.invoiceId,
       }),
+      ...buildTrackingNoteAttributes(body),
     ].filter((attribute) => attribute.value),
     shipping_address: buildShippingAddress(body),
     billing_address: buildShippingAddress(body),

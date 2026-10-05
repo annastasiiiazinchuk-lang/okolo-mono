@@ -174,6 +174,36 @@ describe('Shopify order mapping', () => {
     expect(commentAttribute?.value).not.toContain('GCLID');
   });
 
+  test('formats Instagram product sync source with separate UTM lines', () => {
+    const payload = buildShopifyOrderPayload({
+      ...basePayload,
+      comment: [
+        'Instagram/Telegram: ТЕСТ',
+        'Як звʼязатись: Напишіть мені',
+        'ЗВІДКИ КЛІЄНТ',
+        'Google',
+      ].join('\n'),
+      utm: {
+        utm_source: 'google',
+        utm_medium: 'product_sync',
+        utm_campaign: 'sag_organic',
+      },
+      tracking: {
+        traffic_source: 'Google',
+        gclid: 'google-click-id',
+      },
+    }, getPaymentAmount(basePayload));
+    const note = String(payload.order.note);
+    const commentAttribute = (payload.order.note_attributes as Array<{ name?: string; value?: string }>)
+      .find((attribute) => attribute.name === 'Comment');
+
+    expect(note.match(/ЗВІДКИ КЛІЄНТ/g)?.length).toBe(1);
+    expect(note).toContain('ЗВІДКИ КЛІЄНТ\nInstagram\nUTM source: google\nUTM medium: product_sync\nUTM campaign: sag_organic');
+    expect(note).not.toContain('ЗВІДКИ КЛІЄНТ\nGoogle\n\nCRM оплата');
+    expect(commentAttribute?.value).toContain('ЗВІДКИ КЛІЄНТ\nInstagram');
+    expect(commentAttribute?.value).toContain('UTM campaign: sag_organic');
+  });
+
   test('custom checkout orders do not add Shopify taxes', () => {
     const payload = buildShopifyOrderPayload(basePayload, getPaymentAmount(basePayload));
     const lineItems = payload.order.line_items as Array<Record<string, unknown>>;

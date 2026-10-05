@@ -75,6 +75,11 @@
     return text;
   }
 
+  function isInstagramProductSync(tracking) {
+    return /product_sync/i.test(String(tracking.utm_medium || ''))
+      && /(^|[_-])sag([_-]|$)|instagram|ig/i.test(String(tracking.utm_campaign || ''));
+  }
+
   const params = new URLSearchParams(window.location.search);
   const saved = readSaved();
   const tracking = {
@@ -101,7 +106,8 @@
 
   tracking.ga_client_id = normalizeGaClientId(tracking.ga_cookie) || saved.ga_client_id || '';
   tracking.ga_session_id = normalizeGaSessionId(tracking.ga_session_cookie) || saved.ga_session_id || '';
-  tracking.traffic_source = tracking.traffic_source
+  tracking.traffic_source = (isInstagramProductSync(tracking) ? 'Instagram' : '')
+    || sourceFromText(tracking.traffic_source)
     || sourceFromText(`${tracking.utm_source || ''} ${tracking.referrer || ''}`)
     || (tracking.gclid || tracking.gbraid || tracking.wbraid ? 'Google' : '')
     || (tracking.fbclid || tracking.fbc ? 'Facebook' : '')

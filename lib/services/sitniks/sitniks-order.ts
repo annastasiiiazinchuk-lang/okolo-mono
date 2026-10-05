@@ -11,6 +11,7 @@ import {
   getPaymentAmount,
   getShippingPrice,
   isInternationalCheckout,
+  stripCustomerSourceComment,
 } from '../shopify/shopify-order';
 
 export interface SitniksOrderResponse {
@@ -466,12 +467,26 @@ function buildUtm(body: CheckoutPayload) {
     ...(body.utm || {}),
     ...(body.tracking || {}),
   };
+  const humanUtmValue = (value: unknown) => {
+    const text = asString(value);
+    if (!text || /^[\d\s._-]+$/.test(text) || text.length > 120) return '';
+    return text;
+  };
+  const isInstagramProductSync = /product_sync/i.test(asString(tracking.utm_medium))
+    && /(^|[_-])sag([_-]|$)|instagram|ig/i.test(asString(tracking.utm_campaign));
+  const detectedSource = isInstagramProductSync
+    ? 'Instagram'
+    : humanUtmValue(tracking.traffic_source)
+      || humanUtmValue(tracking.utm_source)
+      || (asString(tracking.gclid) || asString(tracking.gbraid) || asString(tracking.wbraid) ? 'Google' : '')
+      || (asString(tracking.fbclid) || asString(tracking.fbc) ? 'Facebook' : '')
+      || (asString(tracking.ttclid) ? 'TikTok' : '');
   const utm = {
-    source: asString(tracking.utm_source),
-    medium: asString(tracking.utm_medium),
-    campaign: asString(tracking.utm_campaign),
-    content: asString(tracking.utm_content),
-    term: asString(tracking.utm_term),
+    source: detectedSource,
+    medium: humanUtmValue(tracking.utm_medium),
+    campaign: humanUtmValue(tracking.utm_campaign),
+    content: humanUtmValue(tracking.utm_content),
+    term: humanUtmValue(tracking.utm_term),
   };
 
   return Object.fromEntries(Object.entries(utm).filter(([, value]) => value));
@@ -490,7 +505,7 @@ export function buildSitniksOrderPayload(
   const customerSourceComment = buildCustomerSourceComment(body);
   const clientComment = isInternationalCheckout(body)
     ? buildInternationalCheckoutComment(body)
-    : asString(body.comment);
+    : stripCustomerSourceComment(asString(body.comment));
   const managerComment = [
     `Shopify order: ${shopifyOrder.name || shopifyOrder.id}`,
     `Варіант оплати: ${paymentType}`,
