@@ -291,11 +291,20 @@
     line-height: 1.45;
   }
 
+  .okolo-consent.is-invalid {
+    color: var(--okolo-error);
+  }
+
   .okolo-consent input {
     width: 18px;
     height: 18px;
     margin: 0;
     accent-color: var(--okolo-black);
+  }
+
+  .okolo-consent.is-invalid input {
+    outline: 2px solid rgba(198, 40, 40, 0.28);
+    outline-offset: 2px;
   }
 
   .okolo-submit {
@@ -921,14 +930,95 @@
   function fieldError(input, message) {
     const error = form.querySelector(`[data-error-for="${input.id}"]`);
     input.classList.toggle('is-invalid', Boolean(message));
+    input.setAttribute('aria-invalid', message ? 'true' : 'false');
     if (error) {
+      if (!error.id) error.id = `${input.id}-error`;
       error.textContent = message || '';
       error.classList.toggle('is-visible', Boolean(message));
+      if (message) {
+        input.setAttribute('aria-describedby', error.id);
+      } else {
+        input.removeAttribute('aria-describedby');
+      }
     }
   }
 
   function clearFieldError(input) {
     fieldError(input, '');
+  }
+
+  function setConsentError(message) {
+    const consent = document.getElementById('okolo-consent');
+    const wrapper = consent && consent.closest('.okolo-consent');
+    if (!consent || !wrapper) return;
+
+    wrapper.classList.toggle('is-invalid', Boolean(message));
+    consent.setAttribute('aria-invalid', message ? 'true' : 'false');
+  }
+
+  function scrollToValidationTarget(target) {
+    if (!target) return;
+    const wrapper = target.closest && target.closest('.okolo-field, .okolo-consent, .okolo-summary');
+    const scrollTarget = wrapper || target;
+    scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.setTimeout(function () {
+      if (typeof target.focus !== 'function') return;
+      try {
+        target.focus({ preventScroll: true });
+      } catch (error) {
+        target.focus();
+      }
+    }, 280);
+  }
+
+  function markServerFieldError(fieldName) {
+    const fullName = document.getElementById('okolo-full-name');
+    const phone = document.getElementById('okolo-phone');
+    const consent = document.getElementById('okolo-consent');
+    const value = String(fieldName || '').toLocaleLowerCase('uk-UA');
+
+    if (value.includes("ім") || value.includes('прізвище')) {
+      fieldError(fullName, "Введіть ім'я та прізвище");
+      return fullName;
+    }
+    if (value.includes('телефон')) {
+      fieldError(phone, 'Введіть коректний номер телефону');
+      return phone;
+    }
+    if (value.includes('місто')) {
+      fieldError(cityInput, 'Оберіть місто зі списку');
+      return cityInput;
+    }
+    if (value.includes('відділення') || value.includes('поштомат')) {
+      fieldError(warehouseInput, `Оберіть ${getDeliveryTargetLabel().toLocaleLowerCase('uk-UA')} зі списку`);
+      return warehouseInput;
+    }
+    if (value.includes('згода')) {
+      setConsentError('Підтвердіть згоду на обробку персональних даних');
+      return consent;
+    }
+    if (value.includes('товари')) return productsEl;
+    return null;
+  }
+
+  function handleServerValidation(missingFields, message) {
+    if (!Array.isArray(missingFields) || missingFields.length === 0) return false;
+    const fullName = document.getElementById('okolo-full-name');
+    const phone = document.getElementById('okolo-phone');
+    const email = document.getElementById('okolo-email');
+    let firstTarget = null;
+
+    [fullName, phone, email, cityInput, warehouseInput].forEach(clearFieldError);
+    setConsentError('');
+
+    missingFields.forEach(function (fieldName) {
+      const target = markServerFieldError(fieldName);
+      if (!firstTarget && target) firstTarget = target;
+    });
+
+    setStatus(message || "Перевірте обов'язкові поля форми.", 'error');
+    scrollToValidationTarget(firstTarget || submitButton);
+    return true;
   }
 
   function debounce(fn, delay) {
@@ -1357,45 +1447,53 @@
     const email = document.getElementById('okolo-email');
     const consent = document.getElementById('okolo-consent');
     let valid = true;
+    let firstInvalid = null;
 
-    [fullName, phone, email, cityInput, warehouseInput].forEach(clearFieldError);
-    setStatus('', '');
-
-    if (!normalizeText(fullName.value)) {
-      fieldError(fullName, "Введіть ім'я та прізвище");
+    function markInvalid(input, message) {
+      fieldError(input, message);
+      if (!firstInvalid) firstInvalid = input;
       valid = false;
     }
 
+    [fullName, phone, email, cityInput, warehouseInput].forEach(clearFieldError);
+    setConsentError('');
+    setStatus('', '');
+
+    if (!normalizeText(fullName.value)) {
+      markInvalid(fullName, "Введіть ім'я та прізвище");
+    }
+
     if (normalizePhone(phone.value).replace(/\D/g, '').length < 10) {
-      fieldError(phone, 'Введіть коректний номер телефону');
-      valid = false;
+      markInvalid(phone, 'Введіть коректний номер телефону');
     }
 
     const emailValue = normalizeText(email.value);
     if (emailValue && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
-      fieldError(email, 'Введіть коректний e-mail або залиште поле порожнім');
-      valid = false;
+      markInvalid(email, 'Введіть коректний e-mail або залиште поле порожнім');
     }
 
     if (!state.selectedCity) {
-      fieldError(cityInput, 'Оберіть місто зі списку');
-      valid = false;
+      markInvalid(cityInput, 'Оберіть місто зі списку');
     }
 
     if (!state.selectedWarehouse) {
-      fieldError(warehouseInput, `Оберіть ${getDeliveryTargetLabel().toLocaleLowerCase('uk-UA')} зі списку`);
-      valid = false;
+      markInvalid(warehouseInput, `Оберіть ${getDeliveryTargetLabel().toLocaleLowerCase('uk-UA')} зі списку`);
     }
 
     if (!consent.checked) {
+      setConsentError('Підтвердіть згоду на обробку персональних даних');
       setStatus('Підтвердіть згоду на обробку персональних даних.', 'error');
+      if (!firstInvalid) firstInvalid = consent;
       valid = false;
     }
 
     if (!state.cart || !Array.isArray(state.cart.items) || state.cart.items.length === 0) {
       setStatus('Кошик порожній. Додайте товар перед оформленням.', 'error');
+      if (!firstInvalid) firstInvalid = productsEl;
       valid = false;
     }
+
+    if (!valid) scrollToValidationTarget(firstInvalid);
 
     return valid;
   }
@@ -1504,7 +1602,11 @@
       const data = await response.json().catch(function () {
         return {};
       });
-      if (!response.ok) throw new Error(data.message || data.error || 'Не вдалося оформити замовлення');
+      if (!response.ok) {
+        const missingFields = data.details && data.details.missingFields;
+        handleServerValidation(missingFields, data.message);
+        throw new Error(data.message || data.error || 'Не вдалося оформити замовлення');
+      }
 
       setStatus(data.message || 'Замовлення оформлено. Переходимо далі...', 'success');
       await clearCart();
@@ -1519,6 +1621,18 @@
       submitButton.disabled = false;
     }
   }
+
+  ['okolo-full-name', 'okolo-phone', 'okolo-email'].forEach(function (id) {
+    const input = document.getElementById(id);
+    if (!input) return;
+    input.addEventListener('input', function () {
+      clearFieldError(input);
+    });
+  });
+
+  document.getElementById('okolo-consent').addEventListener('change', function () {
+    if (this.checked) setConsentError('');
+  });
 
   cityInput.addEventListener('input', function () {
     clearFieldError(cityInput);
