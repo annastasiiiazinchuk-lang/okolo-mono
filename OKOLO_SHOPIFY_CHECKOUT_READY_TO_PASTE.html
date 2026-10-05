@@ -722,7 +722,7 @@
               <span class="okolo-option-marker" aria-hidden="true"></span>
               <span>
                 <span class="okolo-option-title">Нова пошта</span>
-                <span class="okolo-option-note">1-2 дні, від 80 грн</span>
+                <span class="okolo-option-note">1-2 дні, оплата доставки на пошті</span>
               </span>
             </label>
           </div>
@@ -805,7 +805,7 @@
 <script>
 (function () {
   const API_BASE_URL = 'https://okolo-mono.onrender.com';
-  const DELIVERY_FEE_UAH = 80;
+  const DELIVERY_LABEL = 'Оплата на пошті';
 
   const form = document.getElementById('okoloOrderForm');
   const submitButton = document.getElementById('okolo-submit');
@@ -1036,13 +1036,11 @@
     const cart = state.cart || { items: [], item_count: 0, total_price: 0 };
     const items = Array.isArray(cart.items) ? cart.items : [];
     const subtotal = centsToUah(cart.items_subtotal_price || cart.total_price || 0);
-    const delivery = items.length ? DELIVERY_FEE_UAH : 0;
-
     itemsCountEl.textContent = String(cart.item_count || 0);
     totalItemsEl.textContent = String(cart.item_count || 0);
     subtotalEl.textContent = formatUah(subtotal);
-    deliveryEl.textContent = formatUah(delivery);
-    grandTotalEl.textContent = formatUah(subtotal + delivery);
+    deliveryEl.textContent = items.length ? DELIVERY_LABEL : '0 грн';
+    grandTotalEl.textContent = formatUah(subtotal);
 
     if (!items.length) {
       productsEl.innerHTML = '<p class="okolo-empty-cart">Кошик порожній. Додайте товар, щоб оформити замовлення.</p>';
@@ -1209,7 +1207,7 @@
       comment,
       instagram ? `Instagram: ${instagram}` : '',
       `Як зв'язатись: ${contactLabel}`,
-      `Доставка: Нова пошта, ${formatUah(DELIVERY_FEE_UAH)}`,
+      'Доставка: Нова пошта, оплата доставки на пошті',
     ].filter(Boolean);
     const warehouseName = state.selectedWarehouse.name || warehouseInput.value;
 
@@ -1233,7 +1231,7 @@
         city_ref: state.selectedCity.ref || '',
         warehouse: warehouseName,
         warehouse_ref: state.selectedWarehouse.ref || '',
-        shipping_price: DELIVERY_FEE_UAH,
+        shipping_price: 0,
       },
       goods: cartGoods(),
       comment: commentParts.join('\n'),

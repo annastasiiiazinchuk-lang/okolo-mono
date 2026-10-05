@@ -541,7 +541,7 @@ describe('Shopify order mapping', () => {
     expect(address.address2).toBe('Відділення');
   });
 
-  test('Nova Poshta shipping price creates a domestic shipping line', () => {
+  test('Nova Poshta shipping price is paid on delivery and not added to the order total', () => {
     const novaPoshtaPayload: CheckoutPayload = {
       ...basePayload,
       payment_type: 'no_prepayment',
@@ -553,17 +553,9 @@ describe('Shopify order mapping', () => {
     };
     const payload = buildShopifyOrderPayload(novaPoshtaPayload, getPaymentAmount(novaPoshtaPayload));
 
-    expect(getShippingPrice(novaPoshtaPayload)).toBe(80);
-    expect(payload.order.shipping_lines).toEqual([
-      {
-        title: 'Нова пошта',
-        price: '80.00',
-        code: 'nova_poshta',
-        source: 'custom_checkout',
-        tax_lines: [],
-      },
-    ]);
-    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
+    expect(getShippingPrice(novaPoshtaPayload)).toBe(0);
+    expect(payload.order.shipping_lines).toBeUndefined();
+    expect(payload.order.note_attributes).not.toEqual(expect.arrayContaining([
       { name: 'delivery_price', value: '80' },
     ]));
   });

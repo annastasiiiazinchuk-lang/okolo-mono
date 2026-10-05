@@ -410,10 +410,8 @@ function buildLegacyIntegrationNoteAttributes(
 }
 
 export function getShippingPrice(body: CheckoutPayload): number {
-  if (isInternationalCheckout(body)) return 0;
-  const shipping = body.shipping || {};
-  const price = asNumber(shipping.shipping_price);
-  return price > 0 ? price : 0;
+  void body;
+  return 0;
 }
 
 export function getOrderIdFromMonobankReference(reference: unknown): number {
@@ -515,7 +513,7 @@ export function buildShippingNoteAttributes(body: CheckoutPayload) {
   const shipping = body.shipping || {};
   const isInternational = isInternationalCheckout(body);
   const deliveryMethod = asString(shipping.delivery_method);
-  const shippingPrice = getShippingPrice(body);
+  const shippingPrice = 0;
 
   if (isInternational) {
     return [
@@ -531,7 +529,6 @@ export function buildShippingNoteAttributes(body: CheckoutPayload) {
 
   return [
     { name: 'delivery_type', value: 'nova_poshta' },
-    { name: 'delivery_price', value: shippingPrice ? String(shippingPrice) : '' },
     { name: 'nova_poshta_delivery_method', value: deliveryMethod || 'branch' },
     { name: 'nova_poshta_city', value: asString(shipping.city) },
     { name: 'nova_poshta_city_ref', value: asString(shipping.city_ref) },
@@ -556,9 +553,8 @@ export function buildShopifyOrderPayload(
   const paymentType = normalizePaymentTypeForShopify(body.payment_type);
   const cartTotal = getCartTotal(body);
   const lineItems = buildLineItems(body);
-  const isInternational = isInternationalCheckout(body);
-  const shippingPrice = getShippingPrice(body);
-  const baseOrderNote = isInternational
+  const shippingPrice = 0;
+  const baseOrderNote = isInternationalCheckout(body)
     ? buildInternationalCheckoutComment(body)
     : asString(body.comment);
   const paymentStatus = options.paymentStatus || 'unpaid';
@@ -611,9 +607,9 @@ export function buildShopifyOrderPayload(
   if (shippingPrice > 0) {
     order.shipping_lines = [
       {
-        title: isInternational ? 'International delivery' : 'Нова пошта',
+        title: 'International delivery',
         price: shippingPrice.toFixed(2),
-        code: isInternational ? 'international_delivery' : 'nova_poshta',
+        code: 'international_delivery',
         source: 'custom_checkout',
         tax_lines: [],
       },
