@@ -71,11 +71,11 @@
       warehouseNotFound: 'Відділення не знайдено',
       warehousesErrorPrefix: 'Помилка відділень',
       emptyCart: 'Кошик порожній',
-      creatingPayment: 'Створюємо оплату...',
-      createPaymentError: 'Не вдалося створити оплату',
+      creatingPayment: 'Оформлюємо замовлення...',
+      createPaymentError: 'Не вдалося оформити замовлення',
       clearingCart: 'Очищаємо кошик...',
-      redirectingToPayment: 'Переходимо до оплати...',
-      paymentCreateAlert: 'Помилка створення оплати',
+      redirectingToPayment: 'Завершуємо оформлення...',
+      paymentCreateAlert: 'Помилка оформлення замовлення',
       cartUnavailable: 'Кошик недоступний',
       firstName: "Ім'я",
       lastName: 'Прізвище',
@@ -84,13 +84,13 @@
       comment: 'Коментар до замовлення',
       submit: 'Оформити замовлення',
       fullPayment: 'Повна оплата',
-      noPrepayment: 'Без передплати',
+      noPrepayment: 'Накладений платіж',
       installments: 'Оплата частинами',
       paymentMethod: 'Спосіб оплати',
       fullPaymentSubtitle: 'Оплата 100% вартості онлайн',
       fullPaymentBadge: 'Ви економите 2%+20 грн комісії',
       internationalDeliveryBadge: 'Доставка за кордон узгоджується менеджером',
-      noPrepaymentCard: 'Без передплати',
+      noPrepaymentCard: 'Накладений платіж',
       noPrepaymentSubtitle: 'Оплата при отриманні',
       noPrepaymentBadge: 'Без онлайн-оплати зараз',
       installmentsCard: 'Оплата частинами',
@@ -153,11 +153,11 @@
       warehouseNotFound: 'Branch not found',
       warehousesErrorPrefix: 'Branch error',
       emptyCart: 'Your cart is empty',
-      creatingPayment: 'Creating payment...',
-      createPaymentError: 'Could not create payment',
+      creatingPayment: 'Placing order...',
+      createPaymentError: 'Could not place order',
       clearingCart: 'Clearing cart...',
-      redirectingToPayment: 'Redirecting to payment...',
-      paymentCreateAlert: 'Payment creation error',
+      redirectingToPayment: 'Finishing checkout...',
+      paymentCreateAlert: 'Order creation error',
       cartUnavailable: 'Cart is unavailable',
       firstName: 'First name',
       lastName: 'Last name',
@@ -166,13 +166,13 @@
       comment: 'Order comment',
       submit: 'Place order',
       fullPayment: 'Full payment',
-      noPrepayment: 'No prepayment',
+      noPrepayment: 'Cash on delivery',
       installments: 'Split payment',
       paymentMethod: 'Payment method',
       fullPaymentSubtitle: 'Pay 100% of the order online',
       fullPaymentBadge: 'You save 2% + 20 UAH commission',
       internationalDeliveryBadge: 'International delivery is agreed with a manager',
-      noPrepaymentCard: 'No prepayment',
+      noPrepaymentCard: 'Cash on delivery',
       noPrepaymentSubtitle: 'Pay on delivery',
       noPrepaymentBadge: 'No online payment now',
       installmentsCard: 'Split payment',
@@ -235,11 +235,11 @@
       warehouseNotFound: 'Nie znaleziono oddziału',
       warehousesErrorPrefix: 'Błąd oddziałów',
       emptyCart: 'Koszyk jest pusty',
-      creatingPayment: 'Tworzymy płatność...',
-      createPaymentError: 'Nie udało się utworzyć płatności',
+      creatingPayment: 'Składamy zamówienie...',
+      createPaymentError: 'Nie udało się złożyć zamówienia',
       clearingCart: 'Czyścimy koszyk...',
-      redirectingToPayment: 'Przechodzimy do płatności...',
-      paymentCreateAlert: 'Błąd tworzenia płatności',
+      redirectingToPayment: 'Kończymy zamówienie...',
+      paymentCreateAlert: 'Błąd składania zamówienia',
       cartUnavailable: 'Koszyk jest niedostępny',
       firstName: 'Imię',
       lastName: 'Nazwisko',
@@ -248,13 +248,13 @@
       comment: 'Komentarz do zamówienia',
       submit: 'Złóż zamówienie',
       fullPayment: 'Pełna płatność',
-      noPrepayment: 'Bez przedpłaty',
+      noPrepayment: 'Płatność przy odbiorze',
       installments: 'Płatność w częściach',
       paymentMethod: 'Sposób płatności',
       fullPaymentSubtitle: 'Zapłać 100% wartości zamówienia online',
       fullPaymentBadge: 'Oszczędzasz 2% + 20 UAH prowizji',
       internationalDeliveryBadge: 'Dostawa zagraniczna zostanie ustalona przez menedżera',
-      noPrepaymentCard: 'Bez przedpłaty',
+      noPrepaymentCard: 'Płatność przy odbiorze',
       noPrepaymentSubtitle: 'Płatność przy odbiorze',
       noPrepaymentBadge: 'Bez płatności online teraz',
       installmentsCard: 'Płatność w częściach',
@@ -353,9 +353,9 @@
       ['Передплата 300 грн', t('noPrepaymentCard')],
       ['Prepayment 300 UAH', t('noPrepaymentCard')],
       ['Przedpłata 300 UAH', t('noPrepaymentCard')],
-      ['Без передплати', t('noPrepaymentCard')],
-      ['No prepayment', t('noPrepaymentCard')],
-      ['Bez przedpłaty', t('noPrepaymentCard')],
+      ['Накладений платіж', t('noPrepaymentCard')],
+      ['Cash on delivery', t('noPrepaymentCard')],
+      ['Płatność przy odbiorze', t('noPrepaymentCard')],
       ['Решту суми — при отриманні', t('noPrepaymentSubtitle')],
       ['Решту суми - при отриманні', t('noPrepaymentSubtitle')],
       ['Pay the rest on delivery', t('noPrepaymentSubtitle')],
@@ -435,11 +435,46 @@
       if (legacyLabel) legacyLabel.id = 'card-no-prepayment';
     }
 
-    const card = form.querySelector('input[name="payment_type"][value="no_prepayment"]')?.closest('label');
-    if (card) updatePaymentCardText(card, 'noPrepaymentCard', 'noPrepaymentSubtitle', 'noPrepaymentBadge');
+    if (!form.querySelector('input[name="payment_type"][value="no_prepayment"]')) {
+      const fullInput = form.querySelector('input[name="payment_type"][value="full"]');
+      if (fullInput) {
+        fullInput.value = 'no_prepayment';
+        fullInput.id = 'pay-no-prepayment';
+        const fullLabel = fullInput.closest('label');
+        if (fullLabel) fullLabel.id = 'card-no-prepayment';
+      }
+    }
+
+    const input = form.querySelector('input[name="payment_type"][value="no_prepayment"]');
+    const card = input?.closest('label');
+    if (card) {
+      input.checked = true;
+      input.disabled = false;
+      card.classList.add('active');
+      updatePaymentCardText(card, 'noPrepaymentCard', 'noPrepaymentSubtitle', 'noPrepaymentBadge');
+    }
 
     const legacyHidden = document.querySelector('#payment_type_hidden');
-    if (legacyHidden?.value === 'prepayment') legacyHidden.value = 'no_prepayment';
+    if (legacyHidden) legacyHidden.value = 'no_prepayment';
+  }
+
+  function enforceNoPrepaymentOnly() {
+    normalizeNoPrepaymentOption();
+    form.querySelectorAll('input[name="payment_type"]').forEach((input) => {
+      const label = input.closest('label');
+      if (input.value !== 'no_prepayment') {
+        label?.remove();
+        return;
+      }
+
+      input.checked = true;
+      input.disabled = false;
+      label?.classList.add('active');
+    });
+
+    const legacyHidden = document.querySelector('#payment_type_hidden');
+    if (legacyHidden) legacyHidden.value = 'no_prepayment';
+    setPaymentAmount();
   }
 
   function applyStaticTranslations() {
@@ -499,7 +534,8 @@
   }
 
   function selectPaymentType(type) {
-    const target = form.querySelector(`input[name="payment_type"][value="${type}"]`);
+    const normalizedType = 'no_prepayment';
+    const target = form.querySelector(`input[name="payment_type"][value="${normalizedType}"]`);
     if (!target || target.disabled) return false;
 
     form.querySelectorAll('input[name="payment_type"]').forEach((input) => {
@@ -507,7 +543,7 @@
     });
 
     const legacyHidden = document.querySelector('#payment_type_hidden');
-    if (legacyHidden) legacyHidden.value = type;
+    if (legacyHidden) legacyHidden.value = normalizedType;
 
     syncPaymentCardState();
     setPaymentAmount();
@@ -611,8 +647,8 @@
     const input = form.querySelector('input[name="payment_type"][value="installments"]');
     const label = input?.closest('label');
     if (input?.checked) {
-      const full = form.querySelector('input[name="payment_type"][value="full"]');
-      if (full) full.checked = true;
+      const noPrepayment = form.querySelector('input[name="payment_type"][value="no_prepayment"]');
+      if (noPrepayment) noPrepayment.checked = true;
       setPaymentAmount();
     }
     label?.remove();
@@ -683,6 +719,7 @@
 
   applyStaticTranslations();
   syncPaymentOptions();
+  enforceNoPrepaymentOnly();
   enhanceDeliveryUi(form);
   npCityInput = document.querySelector('#np-city');
   npWarehouseInput = document.querySelector('#np-warehouse');
@@ -1362,9 +1399,7 @@
   }
 
   function getPaymentType() {
-    const shippingType = form.querySelector('input[name="shipping_type"]:checked')?.value || 'ukraine';
-    if (shippingType === 'international') return 'full';
-    return form.querySelector('input[name="payment_type"]:checked')?.value || 'full';
+    return 'no_prepayment';
   }
 
   function getNpDeliveryType() {
@@ -2066,15 +2101,15 @@
   function collectPayload() {
     const formData = new FormData(form);
     const shippingType = String(formData.get('shipping_type') || 'ukraine');
-    const paymentType = getPaymentType();
+    const paymentType = 'no_prepayment';
     const npDeliveryType = String(formData.get('np_delivery_type') || 'branch');
     const shippingPrice = getShippingPrice();
 
     return {
       locale: CURRENT_LOCALE,
       payment_type: paymentType,
-      installments_parts_count: paymentType === 'installments' ? getSelectedInstallmentPartsCount() : undefined,
-      amount: paymentType === 'no_prepayment' ? 0 : getCheckoutTotal(),
+      installments_parts_count: undefined,
+      amount: 0,
       cart_total: cartTotalAmount,
       cart_token: cart?.token || '',
       customer: {

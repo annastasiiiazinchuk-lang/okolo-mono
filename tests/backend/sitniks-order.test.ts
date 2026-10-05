@@ -166,7 +166,7 @@ describe('Sitniks order mapping', () => {
     };
     const payload = buildSitniksOrderPayload(noPrepaymentPayload, { id: 126, name: '#1004' });
 
-    expect(String(payload.managerComment)).toContain('Без передплати');
+    expect(String(payload.managerComment)).toContain('Накладений платіж');
     expect(String(payload.managerComment)).toContain('Статус оплати: unpaid');
     expect(String(payload.managerComment)).toContain('Тег оплати: no_prepayment');
     expect(payload.payment).toBeUndefined();

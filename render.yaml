@@ -12,32 +12,10 @@ services:
         fromDatabase:
           name: okolo-mono-db
           property: connectionString
-      - key: MONO_TOKEN
-        sync: false
       - key: WEBHOOK_URL
         sync: false
       - key: REDIRECT_URL
         sync: false
-      - key: MONO_PARTS_BASE_URL
-        value: https://u2.monobank.com.ua
-      - key: MONO_PARTS_STORE_ID
-        sync: false
-      - key: MONO_PARTS_SECRET
-        sync: false
-      - key: MONO_PARTS_RESULT_CALLBACK_URL
-        sync: false
-      - key: MONO_PARTS_COUNTS
-        value: "3"
-      - key: MONO_PARTS_INVOICE_SOURCE
-        value: INTERNET
-      - key: MONO_PARTS_POINT_ID
-        sync: false
-      - key: MONO_PARTS_ADMIN_TOKEN
-        sync: false
-      - key: MONO_PARTS_AUTO_CONFIRM
-        value: "false"
-      - key: MONO_PARTS_ENABLED
-        value: "false"
       - key: SHOPIFY_STORE_DOMAIN
         sync: false
       - key: SHOPIFY_STORE_URL
@@ -58,32 +36,12 @@ services:
         sync: false
       - key: SITNIKS_STATUS_ID
         sync: false
-      - key: SITNIKS_PAID_STATUS_ID
-        sync: false
-      - key: SITNIKS_PREPAYMENT_PAID_STATUS_ID
-        sync: false
-      - key: SITNIKS_PARTS_PAID_STATUS_ID
-        sync: false
       - key: SITNIKS_SALES_CHANNEL_ID
-        sync: false
-      - key: SITNIKS_SETTLEMENT_ACCOUNT_ID
-        sync: false
-      - key: SITNIKS_SETTLEMENT_ACCOUNT_TITLE
         sync: false
       - key: SITNIKS_WAREHOUSE_ID
         sync: false
       - key: SITNIKS_NOVA_POSHTA_INTEGRATION_ID
         sync: false
-      - key: SITNIKS_CASH_REGISTER_ID
-        sync: false
-      - key: SITNIKS_RECEIPTS_ENABLED
-        value: "false"
-      - key: SITNIKS_RECEIPT_PAYMENT_TYPE
-        value: prepayment
-      - key: SITNIKS_RECEIPT_VERIFY_ATTEMPTS
-        value: 6
-      - key: SITNIKS_RECEIPT_VERIFY_DELAY_MS
-        value: 5000
       - key: SITNIKS_OFFER_MAP
         sync: false
       - key: META_PIXEL_ID

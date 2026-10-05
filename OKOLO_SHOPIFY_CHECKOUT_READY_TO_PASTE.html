@@ -380,15 +380,9 @@
         <fieldset class="payment-type">
           <legend>Спосіб оплати</legend>
           <div class="payment-cards">
-            <label class="payment-card active" id="card-full">
-              <input type="radio" name="payment_type" value="full" id="pay-full" checked>
-              <span class="payment-card-label">Повна оплата</span>
-              <span class="payment-card-desc">Оплата 100% вартості онлайн</span>
-              <span class="payment-card-badge">Ви економите 2%+20 грн комісії</span>
-            </label>
-            <label class="payment-card" id="card-no-prepayment">
-              <input type="radio" name="payment_type" value="no_prepayment" id="pay-no-prepayment">
-              <span class="payment-card-label">Без передплати</span>
+            <label class="payment-card active" id="card-no-prepayment">
+              <input type="radio" name="payment_type" value="no_prepayment" id="pay-no-prepayment" checked>
+              <span class="payment-card-label">Накладений платіж</span>
               <span class="payment-card-desc">Оплата при отриманні</span>
               <span class="payment-card-save">Без онлайн-оплати зараз</span>
             </label>
@@ -399,9 +393,9 @@
         <textarea id="comment" name="comment" rows="3"></textarea>
 
         <input type="hidden" id="amount" name="amount">
-        <input type="hidden" id="payment_type_hidden" name="payment_type_value" value="full">
+        <input type="hidden" id="payment_type_hidden" name="payment_type_value" value="no_prepayment">
 
-        <button type="submit" class="btn-order-submit" id="submit-btn">Оплатити</button>
+        <button type="submit" class="btn-order-submit" id="submit-btn">Оформити замовлення</button>
 
       </form>
     </div>
@@ -726,11 +720,11 @@ document.addEventListener('DOMContentLoaded', function () {
       warehouseNotFound: 'Відділення не знайдено',
       warehousesErrorPrefix: 'Помилка відділень',
       emptyCart: 'Кошик порожній',
-      creatingPayment: 'Створюємо оплату...',
-      createPaymentError: 'Не вдалося створити оплату',
+      creatingPayment: 'Оформлюємо замовлення...',
+      createPaymentError: 'Не вдалося оформити замовлення',
       clearingCart: 'Очищаємо кошик...',
-      redirectingToPayment: 'Переходимо до оплати...',
-      paymentCreateAlert: 'Помилка створення оплати',
+      redirectingToPayment: 'Завершуємо оформлення...',
+      paymentCreateAlert: 'Помилка оформлення замовлення',
       cartUnavailable: 'Кошик недоступний',
       firstName: "Ім'я",
       lastName: 'Прізвище',
@@ -739,12 +733,12 @@ document.addEventListener('DOMContentLoaded', function () {
       comment: 'Коментар до замовлення',
       submit: 'Оформити замовлення',
       fullPayment: 'Повна оплата',
-      noPrepayment: 'Без передплати',
+      noPrepayment: 'Накладений платіж',
       paymentMethod: 'Спосіб оплати',
       fullPaymentSubtitle: 'Оплата 100% вартості онлайн',
       fullPaymentBadge: 'Ви економите 2%+20 грн комісії',
       internationalDeliveryBadge: 'Доставка за кордон узгоджується менеджером',
-      noPrepaymentCard: 'Без передплати',
+      noPrepaymentCard: 'Накладений платіж',
       noPrepaymentSubtitle: 'Оплата при отриманні',
       noPrepaymentBadge: 'Без онлайн-оплати зараз',
       orderSummaryTitle: 'Загальна сума',
@@ -801,11 +795,11 @@ document.addEventListener('DOMContentLoaded', function () {
       warehouseNotFound: 'Branch not found',
       warehousesErrorPrefix: 'Branch error',
       emptyCart: 'Your cart is empty',
-      creatingPayment: 'Creating payment...',
-      createPaymentError: 'Could not create payment',
+      creatingPayment: 'Placing order...',
+      createPaymentError: 'Could not place order',
       clearingCart: 'Clearing cart...',
-      redirectingToPayment: 'Redirecting to payment...',
-      paymentCreateAlert: 'Payment creation error',
+      redirectingToPayment: 'Finishing checkout...',
+      paymentCreateAlert: 'Order creation error',
       cartUnavailable: 'Cart is unavailable',
       firstName: 'First name',
       lastName: 'Last name',
@@ -814,12 +808,12 @@ document.addEventListener('DOMContentLoaded', function () {
       comment: 'Order comment',
       submit: 'Place order',
       fullPayment: 'Full payment',
-      noPrepayment: 'No prepayment',
+      noPrepayment: 'Cash on delivery',
       paymentMethod: 'Payment method',
       fullPaymentSubtitle: 'Pay 100% of the order online',
       fullPaymentBadge: 'You save 2% + 20 UAH commission',
       internationalDeliveryBadge: 'International delivery is agreed with a manager',
-      noPrepaymentCard: 'No prepayment',
+      noPrepaymentCard: 'Cash on delivery',
       noPrepaymentSubtitle: 'Pay on delivery',
       noPrepaymentBadge: 'No online payment now',
       orderSummaryTitle: 'Order summary',
@@ -906,9 +900,9 @@ document.addEventListener('DOMContentLoaded', function () {
       ['Передплата 300 грн', t('noPrepaymentCard')],
       ['Prepayment 300 UAH', t('noPrepaymentCard')],
       ['Przedpłata 300 UAH', t('noPrepaymentCard')],
-      ['Без передплати', t('noPrepaymentCard')],
-      ['No prepayment', t('noPrepaymentCard')],
-      ['Bez przedpłaty', t('noPrepaymentCard')],
+      ['Накладений платіж', t('noPrepaymentCard')],
+      ['Cash on delivery', t('noPrepaymentCard')],
+      ['Płatność przy odbiorze', t('noPrepaymentCard')],
       ['Решту суми — при отриманні', t('noPrepaymentSubtitle')],
       ['Решту суми - при отриманні', t('noPrepaymentSubtitle')],
       ['Pay the rest on delivery', t('noPrepaymentSubtitle')],
@@ -985,8 +979,23 @@ document.addEventListener('DOMContentLoaded', function () {
       if (legacyLabel) legacyLabel.id = 'card-no-prepayment';
     }
 
-    const card = form.querySelector('input[name="payment_type"][value="no_prepayment"]')?.closest('label');
+    if (!form.querySelector('input[name="payment_type"][value="no_prepayment"]')) {
+      const fullInput = form.querySelector('input[name="payment_type"][value="full"]');
+      if (fullInput) {
+        fullInput.value = 'no_prepayment';
+        fullInput.id = 'pay-no-prepayment';
+        const fullLabel = fullInput.closest('label');
+        if (fullLabel) fullLabel.id = 'card-no-prepayment';
+      }
+    }
+
+    const input = form.querySelector('input[name="payment_type"][value="no_prepayment"]');
+    const card = input?.closest('label');
     if (!card) return;
+
+    input.checked = true;
+    input.disabled = false;
+    card.classList.add('active');
 
     const title = card.querySelector('.payment-card-label');
     const subtitle = card.querySelector('.payment-card-desc');
@@ -997,7 +1006,26 @@ document.addEventListener('DOMContentLoaded', function () {
     if (badge) badge.textContent = t('noPrepaymentBadge');
 
     const legacyHidden = document.querySelector('#payment_type_hidden');
-    if (legacyHidden?.value === 'prepayment') legacyHidden.value = 'no_prepayment';
+    if (legacyHidden) legacyHidden.value = 'no_prepayment';
+  }
+
+  function enforceNoPrepaymentOnly() {
+    normalizeNoPrepaymentOption();
+    form.querySelectorAll('input[name="payment_type"]').forEach((input) => {
+      const label = input.closest('label');
+      if (input.value !== 'no_prepayment') {
+        label?.remove();
+        return;
+      }
+
+      input.checked = true;
+      input.disabled = false;
+      label?.classList.add('active');
+    });
+
+    const legacyHidden = document.querySelector('#payment_type_hidden');
+    if (legacyHidden) legacyHidden.value = 'no_prepayment';
+    setPaymentAmount();
   }
 
   function applyStaticTranslations() {
@@ -1052,7 +1080,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function selectPaymentType(type) {
-    const target = form.querySelector(`input[name="payment_type"][value="${type}"]`);
+    const normalizedType = 'no_prepayment';
+    const target = form.querySelector(`input[name="payment_type"][value="${normalizedType}"]`);
     if (!target || target.disabled) return false;
 
     form.querySelectorAll('input[name="payment_type"]').forEach((input) => {
@@ -1060,7 +1089,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     const legacyHidden = document.querySelector('#payment_type_hidden');
-    if (legacyHidden) legacyHidden.value = type;
+    if (legacyHidden) legacyHidden.value = normalizedType;
 
     syncPaymentCardState();
     setPaymentAmount();
@@ -1071,8 +1100,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const input = form.querySelector('input[name="payment_type"][value="installments"]');
     const label = input?.closest('label');
     if (input?.checked) {
-      const full = form.querySelector('input[name="payment_type"][value="full"]');
-      if (full) full.checked = true;
+      const noPrepayment = form.querySelector('input[name="payment_type"][value="no_prepayment"]');
+      if (noPrepayment) noPrepayment.checked = true;
       setPaymentAmount();
     }
     label?.remove();
@@ -1099,6 +1128,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   applyStaticTranslations();
   syncPaymentOptions();
+  enforceNoPrepaymentOnly();
   enhanceDeliveryUi(form);
   npCityInput = document.querySelector('#np-city');
   npWarehouseInput = document.querySelector('#np-warehouse');
@@ -1837,9 +1867,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function getPaymentType() {
-    const shippingType = form.querySelector('input[name="shipping_type"]:checked')?.value || 'ukraine';
-    if (shippingType === 'international') return 'full';
-    return form.querySelector('input[name="payment_type"]:checked')?.value || 'full';
+    return 'no_prepayment';
   }
 
   function getNpDeliveryType() {
@@ -2544,14 +2572,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const emailInput = form.querySelector('input[name="email"], input[type="email"], #email');
     const email = String(emailInput?.value || formData.get('email') || '').trim();
     const shippingType = String(formData.get('shipping_type') || 'ukraine');
-    const paymentType = getPaymentType();
+    const paymentType = 'no_prepayment';
     const npDeliveryType = String(formData.get('np_delivery_type') || 'branch');
     const shippingPrice = getShippingPrice();
 
     return {
       locale: CURRENT_LOCALE,
       payment_type: paymentType,
-      amount: paymentType === 'no_prepayment' ? 0 : getCheckoutTotal(),
+      amount: 0,
       cart_total: cartTotalAmount,
       cart_token: cart?.token || '',
       customer: {

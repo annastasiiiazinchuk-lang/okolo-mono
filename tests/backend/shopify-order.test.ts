@@ -263,14 +263,14 @@ describe('Shopify order mapping', () => {
     expect(getPaymentAmount(noPrepaymentPayload)).toBe(0);
     expect(payload.order.financial_status).toBe('pending');
     expect(payload.order.tags).toBe('no_prepayment');
-    expect(String(payload.order.note)).toContain('Payment: Без передплати');
+    expect(String(payload.order.note)).toContain('Payment: Накладений платіж');
     expect(String(payload.order.note)).toContain('Сума: 1200');
     expect(String(payload.order.note)).toContain('Сплата: 0');
     expect(String(payload.order.note)).toContain('Тег оплати: no_prepayment');
     expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'payment_type', value: 'no_prepayment' },
       { name: 'payment_status', value: 'unpaid' },
-      { name: 'Payment', value: 'Без передплати' },
+      { name: 'Payment', value: 'Накладений платіж' },
       { name: 'Payment tag', value: 'no_prepayment' },
       { name: 'payment_tag', value: 'no_prepayment' },
       { name: 'Cash on delivery', value: 'true' },

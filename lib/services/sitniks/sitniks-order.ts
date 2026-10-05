@@ -138,7 +138,7 @@ function normalizePaymentKind(paymentType: unknown): 'full' | 'no_prepayment' | 
 
 function getSitniksPaymentLabel(paymentType: unknown): string {
   const kind = normalizePaymentKind(paymentType);
-  if (kind === 'no_prepayment') return 'Без передплати';
+  if (kind === 'no_prepayment') return 'Накладений платіж';
   if (kind === 'prepayment') return 'Передплата 300 грн';
   if (kind === 'installments') return 'Покупка Частинами monobank';
   return 'Повна оплата';
@@ -146,7 +146,7 @@ function getSitniksPaymentLabel(paymentType: unknown): string {
 
 function getCrmPaymentLabel(paymentType: unknown, paid = false): string {
   const kind = normalizePaymentKind(paymentType);
-  if (kind === 'no_prepayment') return 'Без передплати';
+  if (kind === 'no_prepayment') return 'Накладений платіж';
   if (kind === 'prepayment') return paid ? 'Передплата Monobank' : 'Накладений платіж';
   if (kind === 'installments') return 'Покупка частинами Monobank';
   return 'Monobank';

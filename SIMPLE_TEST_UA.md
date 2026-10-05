@@ -8,7 +8,7 @@
 - Bun
 - PostgreSQL або Render database
 - ngrok / Cloudflare Tunnel для локального тесту
-- Monobank merchant token
+- Shopify app credentials
 - Shopify app з Dev Dashboard
 - Nova Poshta API key
 
@@ -18,8 +18,7 @@
 
 ```env
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/okolo_mono
-MONO_TOKEN=твій_monobank_token
-WEBHOOK_URL=https://abc-123.ngrok-free.app/api/webhooks/monobank
+WEBHOOK_URL=https://abc-123.ngrok-free.app
 REDIRECT_URL=https://твій-okolo-магазин.myshopify.com
 SHOPIFY_STORE_DOMAIN=твій-okolo-магазин.myshopify.com
 SHOPIFY_CLIENT_ID=твій_client_id
@@ -80,7 +79,7 @@ https://abc-123.ngrok-free.app/api/health
 
 ## 6. Shopify сторінка
 
-У frontend-файлі `shopify-custom-checkout-monobank.js` вистав:
+У frontend-файлі `shopify-custom-checkout-okolo.js` вистав:
 
 ```js
 const API_BASE_URL = 'https://abc-123.ngrok-free.app';
@@ -92,7 +91,7 @@ const API_BASE_URL = 'https://abc-123.ngrok-free.app';
 
 - Backend створює Shopify order.
 - Для передплати order створюється з `financial_status: pending` і тегом `not_paid_300`.
-- Backend створює Monobank invoice.
+- Backend створює Shopify order з оплатою при отриманні.
 - Після успішної оплати webhook знаходить payment у БД.
 - Для передплати фінансовий статус не змінюється, тег стає `prepayment_300_paid`.
 - Для повної оплати backend додає payment transaction і ставить order у `paid`.

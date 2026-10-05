@@ -1,6 +1,6 @@
 # Okolo-mono
 
-Повний backend для Render у стилі Мірт: Shopify checkout -> Shopify order -> Monobank invoice / Monobank Частинами -> PostgreSQL mapping -> webhooks -> Sitniks CRM -> optional Meta Conversions API.
+Backend для Render у стилі Мірт: Shopify checkout -> Shopify order без онлайн-оплати -> Sitniks CRM -> optional Meta Conversions API.
 
 ## Що всередині
 
@@ -9,9 +9,7 @@
 - `/api/health` перевіряє конфіг.
 - `/api/health/db` перевіряє базу.
 - `/auth` і `/auth/callback` роблять Shopify OAuth.
-- `/api/orders/create-invoice` створює Shopify order, Monobank payment і Sitniks order.
-- `/api/webhooks/monobank` синхронізує оплату назад у Shopify і Sitniks.
-- `/api/webhooks/monobank-parts` обробляє Monobank Частинами.
+- `/api/orders/create-invoice` створює Shopify order з оплатою при отриманні і Sitniks order.
 - `/api/np/cities` і `/api/np/warehouses` проксать Nova Poshta.
 
 ## Підключення з нуля
@@ -41,8 +39,7 @@ Render сам створить backend і базу. `DATABASE_URL` підста�
 Обов'язково заповнити в Render:
 
 ```env
-MONO_TOKEN=
-WEBHOOK_URL=https://okolo-mono.onrender.com/api/webhooks/monobank
+WEBHOOK_URL=https://okolo-mono.onrender.com
 REDIRECT_URL=https://твій-shopify-домен/pages/thank-you
 SHOPIFY_STORE_DOMAIN=твій-магазин.myshopify.com
 SHOPIFY_CLIENT_ID=
@@ -50,39 +47,15 @@ SHOPIFY_CLIENT_SECRET=
 NOVA_POSHTA_API_KEY=
 SITNIKS_API_TOKEN=
 SITNIKS_STATUS_ID=
-SITNIKS_PAID_STATUS_ID=
-SITNIKS_PREPAYMENT_PAID_STATUS_ID=
 SITNIKS_SALES_CHANNEL_ID=
-SITNIKS_SETTLEMENT_ACCOUNT_ID=
-SITNIKS_SETTLEMENT_ACCOUNT_TITLE=
 SITNIKS_WAREHOUSE_ID=
 SITNIKS_NOVA_POSHTA_INTEGRATION_ID=
-```
-
-Для чеків через Sitniks/Checkbox:
-
-```env
-SITNIKS_CASH_REGISTER_ID=
-SITNIKS_RECEIPTS_ENABLED=true
-SITNIKS_RECEIPT_PAYMENT_TYPE=prepayment
 ```
 
 Для автосписання товарів:
 
 ```env
 SITNIKS_OFFER_MAP={"SHOPIFY_SKU":{"itemId":123,"itemType":"variation"}}
-```
-
-Для Monobank Частинами:
-
-```env
-MONO_PARTS_ENABLED=true
-MONO_PARTS_STORE_ID=
-MONO_PARTS_SECRET=
-MONO_PARTS_RESULT_CALLBACK_URL=https://okolo-mono.onrender.com/api/webhooks/monobank-parts
-MONO_PARTS_COUNTS=3
-MONO_PARTS_POINT_ID=
-MONO_PARTS_ADMIN_TOKEN=
 ```
 
 Опційно:
@@ -127,7 +100,7 @@ https://okolo-mono.onrender.com/auth?shop=твій-магазин.myshopify.com
 
 ## Shopify frontend
 
-У `shopify-custom-checkout-monobank.js` постав:
+У `shopify-custom-checkout-okolo.js` постав:
 
 ```js
 const API_BASE_URL = 'https://okolo-mono.onrender.com';

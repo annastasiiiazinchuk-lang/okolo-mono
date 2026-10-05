@@ -191,8 +191,8 @@ export function isInternationalCheckout(body: CheckoutPayload): boolean {
 }
 
 function legacyPaymentLabel(body: CheckoutPayload, isInternational = false): string {
-  if (isInternational) return 'Monobank';
-  if (body.payment_type === 'no_prepayment') return 'Без передплати';
+  if (isInternational && body.payment_type !== 'no_prepayment') return 'Monobank';
+  if (body.payment_type === 'no_prepayment') return 'Накладений платіж';
   if (body.payment_type === 'prepayment') return 'Накладений платіж';
   if (body.payment_type === 'installments') return 'Покупка частинами Monobank';
   return 'Monobank';
@@ -689,7 +689,7 @@ export function buildOrderUpdateAfterPayment(
   const paidPaymentTag = getPaidPaymentTag(paymentType);
   const paymentLabel = (() => {
     if (isPrepayment) return 'Передплата Monobank';
-    if (paymentType === 'no_prepayment') return 'Без передплати';
+    if (paymentType === 'no_prepayment') return 'Накладений платіж';
     if (paymentType === 'installments') return 'Покупка частинами Monobank';
     return 'Monobank';
   })();
