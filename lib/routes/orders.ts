@@ -5,7 +5,49 @@ import {
   getPaymentAmount,
 } from '../services/shopify/shopify-order';
 import { sendSitniksOrder } from '../services/sitniks/sitniks-order';
-import { checkoutPayloadSchema } from '../types/checkout';
+import { checkoutPayloadSchema, type CheckoutPayload } from '../types/checkout';
+
+function text(value: unknown): string {
+  return String(value ?? '').trim();
+}
+
+function phoneDigits(value: unknown): string {
+  return text(value).replace(/\D/g, '');
+}
+
+export function validateCheckoutRequiredFields(body: CheckoutPayload): string[] {
+  const customer = body.customer || {};
+  const shipping = body.shipping || {};
+  const missing: string[] = [];
+  const customerName = [text(customer.first_name), text(customer.last_name)].filter(Boolean).join(' ');
+  const hasGoods = (body.goods || []).some((item) => {
+    const quantity = Number(item.quantity || 0);
+    return quantity > 0 && (text(item.variant_id) || text(item.code) || text(item.name) || text(item.title));
+  });
+
+  if (!customerName) missing.push("ім'я та прізвище");
+  if (phoneDigits(customer.phone).length < 10) missing.push('телефон');
+  if (!hasGoods) missing.push('товари в кошику');
+  if (body.personal_data_consent !== true) missing.push('згода на обробку персональних даних');
+
+  const isInternational = body.shipping_type === 'international' || shipping.type === 'international';
+  if (isInternational) {
+    if (!text(shipping.country)) missing.push('країна доставки');
+    if (!text(shipping.intl_city) && !text(shipping.city)) missing.push('місто доставки');
+    if (!text(shipping.address)) missing.push('адреса доставки');
+  } else {
+    const deliveryMethod = text(shipping.delivery_method) || 'branch';
+    if (!text(shipping.city)) missing.push('місто Нової пошти');
+    if (deliveryMethod === 'address') {
+      if (!text(shipping.street)) missing.push('вулиця доставки');
+      if (!text(shipping.house)) missing.push('будинок доставки');
+    } else if (!text(shipping.warehouse)) {
+      missing.push(deliveryMethod === 'postomat' ? 'поштомат Нової пошти' : 'відділення Нової пошти');
+    }
+  }
+
+  return missing;
+}
 
 export async function handleCreateInvoice(request: Request): Promise<Response> {
   let rawBody: unknown;
@@ -44,6 +86,22 @@ export async function handleCreateInvoice(request: Request): Promise<Response> {
     page_url: String(rawTracking.page_url || requestPageUrl).trim(),
     client_ip_address: String(rawTracking.client_ip_address || requestIp).trim(),
   };
+
+  const missingFields = validateCheckoutRequiredFields(body);
+  if (missingFields.length > 0) {
+    console.warn('[Orders] Rejected incomplete manual-payment order', {
+      missingFields,
+      hasGoods: (body.goods || []).length > 0,
+      hasPhone: phoneDigits(body.customer?.phone).length >= 10,
+      hasTracking: Object.keys(body.tracking || {}).length > 0,
+    });
+
+    return json({
+      error: 'Invalid checkout payload',
+      message: `Заповніть обов'язкові поля: ${missingFields.join(', ')}`,
+      details: { missingFields },
+    }, 400);
+  }
 
   try {
     body.payment_type = body.payment_type === 'full' ? 'full' : 'no_prepayment';
