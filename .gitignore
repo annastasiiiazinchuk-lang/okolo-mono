@@ -1,0 +1,12 @@
+node_modules
+.bun-cache
+.cache
+.home
+.env
+.env.local
+.DS_Store
+dist
+.next
+*.log
+.shopify-admin-token
+.payment-mappings.json
