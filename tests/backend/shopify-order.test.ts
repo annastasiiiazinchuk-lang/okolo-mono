@@ -150,6 +150,8 @@ describe('Shopify order mapping', () => {
     }, getPaymentAmount(basePayload));
     const utmAttribute = (payload.order.note_attributes as Array<{ name?: string; value?: string }>)
       .find((attribute) => attribute.name === 'UTM');
+    const commentAttribute = (payload.order.note_attributes as Array<{ name?: string; value?: string }>)
+      .find((attribute) => attribute.name === 'Comment');
 
     expect(utmAttribute?.value).toContain('utm_medium: social');
     expect(utmAttribute?.value).toContain('utm_source: ig');
@@ -162,6 +164,14 @@ describe('Shopify order mapping', () => {
     expect(utmAttribute?.value).toContain('_fbp: fb.1.17887050546561.847850575329279795');
     expect(utmAttribute?.value).toContain('utm_lang: uk');
     expect(utmAttribute?.value).toContain('utm_id: campaign-123');
+    expect(String(payload.order.note)).toContain('ЗВІДКИ КЛІЄНТ');
+    expect(String(payload.order.note)).toContain('UTM source: ig');
+    expect(String(payload.order.note)).not.toContain('FBCLID');
+    expect(String(payload.order.note)).not.toContain('GCLID');
+    expect(commentAttribute?.value).toContain('ЗВІДКИ КЛІЄНТ');
+    expect(commentAttribute?.value).toContain('UTM campaign: fall');
+    expect(commentAttribute?.value).not.toContain('FBCLID');
+    expect(commentAttribute?.value).not.toContain('GCLID');
   });
 
   test('custom checkout orders do not add Shopify taxes', () => {

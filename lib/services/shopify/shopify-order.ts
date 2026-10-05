@@ -250,6 +250,50 @@ function withPaymentCrmComment(note: unknown, paymentComment: string): string {
   ].filter(Boolean).join('\n\n');
 }
 
+function trackingValue(tracking: Record<string, unknown>, key: string): string {
+  return asString(tracking[key]);
+}
+
+function humanTrackingValue(value: unknown): string {
+  const text = asString(value);
+  if (!text) return '';
+  if (/^[\d\s._-]+$/.test(text)) return '';
+  if (text.length > 120) return '';
+  return text;
+}
+
+function detectTrafficSourceLabel(tracking: Record<string, unknown>): string {
+  const source = humanTrackingValue(trackingValue(tracking, 'traffic_source')) || humanTrackingValue(trackingValue(tracking, 'utm_source'));
+  const referrer = trackingValue(tracking, 'referrer');
+  const joined = `${source} ${referrer}`.toLocaleLowerCase('uk-UA');
+
+  if (/instagram|(^|\W)ig($|\W)/i.test(joined)) return 'Instagram';
+  if (/facebook|(^|\W)fb($|\W)/i.test(joined) || trackingValue(tracking, 'fbclid') || trackingValue(tracking, 'fbc')) return 'Facebook';
+  if (/google/i.test(joined) || trackingValue(tracking, 'gclid') || trackingValue(tracking, 'gbraid') || trackingValue(tracking, 'wbraid')) return 'Google';
+  if (/tiktok|(^|\W)tt($|\W)/i.test(joined) || trackingValue(tracking, 'ttclid')) return 'TikTok';
+  return source;
+}
+
+export function buildCustomerSourceComment(body: CheckoutPayload): string {
+  if (/ЗВІДКИ КЛІЄНТ/u.test(asString(body.comment))) return '';
+
+  const tracking = {
+    ...(body.utm || {}),
+    ...(body.tracking || {}),
+  };
+  const sourceLabel = detectTrafficSourceLabel(tracking);
+  const lines = [
+    sourceLabel,
+    humanTrackingValue(trackingValue(tracking, 'utm_source')) ? `UTM source: ${humanTrackingValue(trackingValue(tracking, 'utm_source'))}` : '',
+    humanTrackingValue(trackingValue(tracking, 'utm_medium')) ? `UTM medium: ${humanTrackingValue(trackingValue(tracking, 'utm_medium'))}` : '',
+    humanTrackingValue(trackingValue(tracking, 'utm_campaign')) ? `UTM campaign: ${humanTrackingValue(trackingValue(tracking, 'utm_campaign'))}` : '',
+    humanTrackingValue(trackingValue(tracking, 'utm_content')) ? `UTM content: ${humanTrackingValue(trackingValue(tracking, 'utm_content'))}` : '',
+    humanTrackingValue(trackingValue(tracking, 'utm_term')) ? `UTM term: ${humanTrackingValue(trackingValue(tracking, 'utm_term'))}` : '',
+  ].filter(Boolean);
+
+  return lines.length ? ['ЗВІДКИ КЛІЄНТ', ...lines].join('\n') : '';
+}
+
 function buildLegacyUtmValue(body: CheckoutPayload): string {
   const tracking = {
     ...(body.utm || {}),
@@ -358,7 +402,10 @@ function buildLegacyIntegrationNoteAttributes(
     paidAmount,
     invoiceId: options.invoiceId,
   });
-  const commentBase = isInternational ? buildInternationalCheckoutComment(body) : asString(body.comment);
+  const commentBase = [
+    isInternational ? buildInternationalCheckoutComment(body) : asString(body.comment),
+    buildCustomerSourceComment(body),
+  ].filter(Boolean).join('\n\n');
   const internationalFields = isInternational
     ? [
         { name: '_country-code', value: countryCode },
@@ -565,9 +612,13 @@ export function buildShopifyOrderPayload(
   const cartTotal = getCartTotal(body);
   const lineItems = buildLineItems(body);
   const shippingPrice = 0;
-  const baseOrderNote = isInternationalCheckout(body)
+  const rawBaseOrderNote = isInternationalCheckout(body)
     ? buildInternationalCheckoutComment(body)
     : asString(body.comment);
+  const baseOrderNote = [
+    rawBaseOrderNote,
+    buildCustomerSourceComment(body),
+  ].filter(Boolean).join('\n\n');
   const paymentStatus = options.paymentStatus || 'unpaid';
   const paymentTag = paymentStatus === 'unpaid'
     ? getUnpaidPaymentTag(body.payment_type)

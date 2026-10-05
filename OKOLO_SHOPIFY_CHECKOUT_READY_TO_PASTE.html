@@ -821,6 +821,21 @@
 (function () {
   const API_BASE_URL = 'https://okolo-mono.onrender.com';
   const FULL_PAYMENT_URL = window.OKOLO_FULL_PAYMENT_URL || '/pages/okolo-payment';
+  const TRACKING_STORAGE_KEY = 'okolo_tracking';
+  const TRACKING_PARAMS = [
+    'utm_source',
+    'utm_medium',
+    'utm_campaign',
+    'utm_content',
+    'utm_term',
+    'utm_lang',
+    'gclid',
+    'gbraid',
+    'wbraid',
+    'fbclid',
+    'ttclid',
+    'msclkid',
+  ];
 
   const form = document.getElementById('okoloOrderForm');
   const submitButton = document.getElementById('okolo-submit');
@@ -1167,17 +1182,136 @@
     return getSelectedPaymentType() === 'full' ? 'Повна оплата' : 'Післяплата';
   }
 
+  function readJsonStorage(key) {
+    try {
+      return JSON.parse(localStorage.getItem(key) || '{}') || {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function writeJsonStorage(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      // Tracking should never block checkout.
+    }
+  }
+
+  function isTrackingParamName(name) {
+    return TRACKING_PARAMS.includes(name) || String(name || '').startsWith('utm_');
+  }
+
+  function getCookie(name) {
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = document.cookie.match(new RegExp(`(?:^|; )${escapedName}=([^;]*)`));
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
+  function getCookieByPrefix(prefix) {
+    return document.cookie
+      .split(';')
+      .map(function (item) { return item.trim(); })
+      .find(function (item) { return item.indexOf(prefix) === 0; })
+      ?.split('=')
+      .slice(1)
+      .join('=') || '';
+  }
+
+  function normalizeGaClientId(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (/^GA\d+\.\d+\./.test(raw)) return raw.split('.').slice(2).join('.');
+    return raw;
+  }
+
+  function normalizeGaSessionId(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const prefixedMatch = raw.match(/(?:^|[.$])s(\d{8,})(?:[$.]|$)/);
+    if (prefixedMatch && prefixedMatch[1]) return prefixedMatch[1];
+    if (/^GS\d+\.\d+\./.test(raw)) return raw.split('.')[2] || '';
+    return raw;
+  }
+
+  function trafficSourceFromText(value) {
+    const text = String(value || '').toLocaleLowerCase('uk-UA');
+    if (/instagram|(^|\W)ig($|\W)/i.test(text)) return 'Instagram';
+    if (/facebook|(^|\W)fb($|\W)/i.test(text)) return 'Facebook';
+    if (/google/i.test(text)) return 'Google';
+    if (/tiktok|(^|\W)tt($|\W)/i.test(text)) return 'TikTok';
+    return '';
+  }
+
+  function detectTrafficSource(tracking) {
+    return trafficSourceFromText(tracking.traffic_source)
+      || trafficSourceFromText(`${tracking.utm_source || ''} ${tracking.referrer || ''}`)
+      || (tracking.gclid || tracking.gbraid || tracking.wbraid ? 'Google' : '')
+      || (tracking.fbclid || tracking.fbc ? 'Facebook' : '')
+      || (tracking.ttclid ? 'TikTok' : '')
+      || humanTrackingValue(tracking.utm_source)
+      || '';
+  }
+
+  function humanTrackingValue(value) {
+    const text = normalizeText(value);
+    if (!text) return '';
+    if (/^[\d\s._-]+$/.test(text)) return '';
+    if (text.length > 120) return '';
+    return text;
+  }
+
+  function trackingLine(label, value) {
+    const text = humanTrackingValue(value);
+    return text ? `${label}: ${text}` : '';
+  }
+
+  function buildTrackingComment(tracking) {
+    const source = detectTrafficSource(tracking);
+    const lines = [
+      source,
+      trackingLine('UTM source', tracking.utm_source),
+      trackingLine('UTM medium', tracking.utm_medium),
+      trackingLine('UTM campaign', tracking.utm_campaign),
+      trackingLine('UTM content', tracking.utm_content),
+      trackingLine('UTM term', tracking.utm_term),
+    ].filter(Boolean);
+
+    return lines.length ? ['ЗВІДКИ КЛІЄНТ', ...lines].join('\n') : '';
+  }
+
   function readTracking() {
     const params = new URLSearchParams(window.location.search);
+    const saved = readJsonStorage(TRACKING_STORAGE_KEY);
+    const gaCookie = getCookie('_ga') || saved.ga_cookie || '';
+    const gaSessionCookie = getCookieByPrefix('_ga_') || saved.ga_session_cookie || '';
     const tracking = {
+      ...saved,
       page_url: window.location.href,
-      referrer: document.referrer || '',
-      landing_page: window.location.pathname,
+      referrer: saved.referrer || document.referrer || '',
+      landing_page: saved.landing_page || window.location.href,
+      user_agent: navigator.userAgent || '',
+      fbp: getCookie('_fbp') || saved.fbp || '',
+      fbc: getCookie('_fbc') || saved.fbc || '',
+      ga_cookie: gaCookie,
+      ga_client_id: normalizeGaClientId(gaCookie) || saved.ga_client_id || '',
+      ga_session_cookie: gaSessionCookie,
+      ga_session_id: normalizeGaSessionId(gaSessionCookie) || saved.ga_session_id || '',
+      gcl_aw: getCookie('_gcl_aw') || saved.gcl_aw || '',
+      gcl_au: getCookie('_gcl_au') || saved.gcl_au || '',
     };
-    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'gbraid', 'wbraid', 'fbclid', 'ttclid', 'msclkid'].forEach(function (key) {
-      const value = params.get(key);
-      if (value) tracking[key] = value;
+
+    let hasFreshTracking = false;
+    params.forEach(function (value, name) {
+      if (value && isTrackingParamName(name)) {
+        tracking[name] = value;
+        hasFreshTracking = true;
+      }
     });
+
+    tracking.traffic_source = detectTrafficSource(tracking);
+    if (hasFreshTracking || !saved.landing_page) writeJsonStorage(TRACKING_STORAGE_KEY, tracking);
+
     return tracking;
   }
 
@@ -1268,6 +1402,8 @@
     const paymentComment = paymentType === 'full'
       ? "Оплата: повна оплата за реквізитами. Реквізити з'являться на наступній сторінці"
       : "Передплата: менеджер зв'яжеться для проведення мінімальної передплати 200 грн";
+    const tracking = readTracking();
+    const trackingComment = buildTrackingComment(tracking);
     const commentParts = [
       comment,
       instagram ? `Instagram/Telegram: ${instagram}` : '',
@@ -1275,6 +1411,7 @@
       `Доставка: Нова пошта (${deliveryTarget}), оплата доставки на пошті`,
       `Спосіб оплати: ${getSelectedPaymentLabel()}`,
       paymentComment,
+      trackingComment,
     ].filter(Boolean);
     const warehouseName = state.selectedWarehouse.name || warehouseInput.value;
 
@@ -1303,8 +1440,8 @@
       goods: cartGoods(),
       comment: commentParts.join('\n'),
       personal_data_consent: Boolean(document.getElementById('okolo-consent').checked),
-      tracking: readTracking(),
-      utm: readTracking(),
+      tracking,
+      utm: tracking,
     };
   }
 

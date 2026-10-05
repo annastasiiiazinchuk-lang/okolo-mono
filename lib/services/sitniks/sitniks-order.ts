@@ -5,6 +5,7 @@ import type { MonobankWebhookBody } from '../../types/monobank';
 import type { ShopifyOrder } from '../../types/shopify';
 import { asNumber, asString, parseJsonObject } from '../../utils/format';
 import {
+  buildCustomerSourceComment,
   buildInternationalCheckoutComment,
   getCartTotal,
   getPaymentAmount,
@@ -486,6 +487,7 @@ export function buildSitniksOrderPayload(
   const paymentType = getSitniksPaymentLabel(body.payment_type);
   const goodsComment = buildGoodsComment(body);
   const deliveryComment = buildDeliveryComment(body);
+  const customerSourceComment = buildCustomerSourceComment(body);
   const clientComment = isInternationalCheckout(body)
     ? buildInternationalCheckoutComment(body)
     : asString(body.comment);
@@ -501,6 +503,7 @@ export function buildSitniksOrderPayload(
     }),
     goodsComment ? `Товари:\n${goodsComment}` : '',
     deliveryComment,
+    customerSourceComment,
   ].filter(Boolean).join('\n');
 
   const payload: Record<string, unknown> = {
