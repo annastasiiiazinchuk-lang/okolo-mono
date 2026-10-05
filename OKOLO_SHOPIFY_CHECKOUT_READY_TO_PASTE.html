@@ -666,7 +666,7 @@
         </div>
 
         <div class="okolo-field">
-          <label for="okolo-instagram">Ваш Instagram (для зв'язку)</label>
+          <label for="okolo-instagram">Instagram/ Telegram</label>
           <input class="okolo-input" id="okolo-instagram" name="instagram" type="text" autocomplete="off" placeholder="@username">
         </div>
 
@@ -708,24 +708,33 @@
         </div>
 
         <div class="okolo-field">
-          <label for="okolo-warehouse">Відділення / Поштомат *</label>
-          <input class="okolo-input" id="okolo-warehouse" name="warehouse" type="text" autocomplete="off" placeholder="Оберіть відділення" disabled required>
-          <div class="okolo-suggestions" id="okolo-warehouse-suggestions" hidden></div>
-          <div class="okolo-field-error" data-error-for="okolo-warehouse"></div>
-        </div>
-
-        <div class="okolo-field">
           <span class="okolo-field-label">Спосіб доставки</span>
-          <div class="okolo-options okolo-single-option">
+          <div class="okolo-options">
             <label class="okolo-option">
-              <input type="radio" name="delivery_method" value="nova_poshta" checked>
+              <input type="radio" name="delivery_method" value="branch" checked>
               <span class="okolo-option-marker" aria-hidden="true"></span>
               <span>
-                <span class="okolo-option-title">Нова пошта</span>
-                <span class="okolo-option-note">1-2 дні, оплата доставки на пошті</span>
+                <span class="okolo-option-title">Відділення</span>
+                <span class="okolo-option-note">Отримання у відділенні Нової пошти</span>
+              </span>
+            </label>
+
+            <label class="okolo-option">
+              <input type="radio" name="delivery_method" value="postomat">
+              <span class="okolo-option-marker" aria-hidden="true"></span>
+              <span>
+                <span class="okolo-option-title">Поштомат</span>
+                <span class="okolo-option-note">Отримання у поштоматі Нової пошти</span>
               </span>
             </label>
           </div>
+        </div>
+
+        <div class="okolo-field">
+          <label for="okolo-warehouse" id="okolo-warehouse-label">Відділення *</label>
+          <input class="okolo-input" id="okolo-warehouse" name="warehouse" type="text" autocomplete="off" placeholder="Оберіть відділення" disabled required>
+          <div class="okolo-suggestions" id="okolo-warehouse-suggestions" hidden></div>
+          <div class="okolo-field-error" data-error-for="okolo-warehouse"></div>
         </div>
 
         <div class="okolo-field">
@@ -746,7 +755,8 @@
             <span class="okolo-option-marker" aria-hidden="true"></span>
             <span>
               <span class="okolo-option-title">Післяплата</span>
-              <span class="okolo-option-note">Оплата при отриманні у відділенні Нової пошти</span>
+              <span class="okolo-option-note">Наш менеджер зв'яжеться з Вами для проведення мінімальної передплати 200 грн</span>
+              <span class="okolo-option-note">Решта суми оплачується при отриманні через Нову пошту</span>
             </span>
           </label>
         </div>
@@ -812,8 +822,10 @@
   const grandTotalEl = document.getElementById('okolo-grand-total');
   const cityInput = document.getElementById('okolo-city');
   const warehouseInput = document.getElementById('okolo-warehouse');
+  const warehouseLabel = document.getElementById('okolo-warehouse-label');
   const citySuggestions = document.getElementById('okolo-city-suggestions');
   const warehouseSuggestions = document.getElementById('okolo-warehouse-suggestions');
+  const deliveryMethodInputs = Array.from(document.querySelectorAll('input[name="delivery_method"]'));
   const promoToggle = document.getElementById('okolo-promo-toggle');
   const promoPanel = document.getElementById('okolo-promo-panel');
   const promoApply = document.getElementById('okolo-promo-apply');
@@ -926,6 +938,35 @@
     container.hidden = false;
   }
 
+  function getSelectedDeliveryMethod() {
+    const checked = form.querySelector('input[name="delivery_method"]:checked');
+    return checked && checked.value === 'postomat' ? 'postomat' : 'branch';
+  }
+
+  function getDeliveryTargetLabel() {
+    return getSelectedDeliveryMethod() === 'postomat' ? 'Поштомат' : 'Відділення';
+  }
+
+  function updateDeliveryMethodUi(options) {
+    const shouldResetWarehouse = !options || options.resetWarehouse !== false;
+    const targetLabel = getDeliveryTargetLabel();
+    if (warehouseLabel) warehouseLabel.textContent = `${targetLabel} *`;
+    warehouseInput.placeholder = `Оберіть ${targetLabel.toLocaleLowerCase('uk-UA')}`;
+
+    if (shouldResetWarehouse) {
+      state.selectedWarehouse = null;
+      warehouseInput.value = '';
+      hideSuggestions(warehouseSuggestions);
+      clearFieldError(warehouseInput);
+    }
+  }
+
+  function warehouseMatchesDeliveryMethod(warehouse) {
+    const name = String(warehouse?.name || '');
+    const isPostomat = /поштомат/i.test(name);
+    return getSelectedDeliveryMethod() === 'postomat' ? isPostomat : !isPostomat;
+  }
+
   function renderCitySuggestions(cities) {
     if (!cities.length) {
       renderSuggestionMessage(citySuggestions, 'Місто не знайдено');
@@ -945,18 +986,21 @@
   }
 
   function renderWarehouseSuggestions(warehouses) {
-    if (!warehouses.length) {
-      renderSuggestionMessage(warehouseSuggestions, 'Відділення не знайдено');
+    const filteredWarehouses = warehouses.filter(warehouseMatchesDeliveryMethod);
+    const targetLabel = getDeliveryTargetLabel();
+
+    if (!filteredWarehouses.length) {
+      renderSuggestionMessage(warehouseSuggestions, `${targetLabel} не знайдено`);
       return;
     }
 
-    warehouseSuggestions.innerHTML = warehouses.map(function (warehouse, index) {
+    warehouseSuggestions.innerHTML = filteredWarehouses.map(function (warehouse, index) {
       return `<button class="okolo-suggestion" type="button" data-warehouse-index="${index}">
         ${escapeHtml(warehouse.name)}
       </button>`;
     }).join('');
     warehouseSuggestions.hidden = false;
-    warehouseSuggestions._items = warehouses;
+    warehouseSuggestions._items = filteredWarehouses;
   }
 
   const searchCities = debounce(async function () {
@@ -987,14 +1031,16 @@
   const searchWarehouses = debounce(async function () {
     if (!state.selectedCity) return;
     const query = normalizeText(warehouseInput.value);
+    const targetLabel = getDeliveryTargetLabel();
+    const apiQuery = getSelectedDeliveryMethod() === 'postomat' && !query ? 'поштомат' : query;
     const requestId = ++state.warehouseRequestId;
-    renderSuggestionMessage(warehouseSuggestions, 'Шукаємо відділення...');
+    renderSuggestionMessage(warehouseSuggestions, `Шукаємо ${targetLabel.toLocaleLowerCase('uk-UA')}...`);
 
     try {
       const params = new URLSearchParams({
         city: state.selectedCity.name || cityInput.value,
         cityRef: state.selectedCity.ref || '',
-        query,
+        query: apiQuery,
         rid: `okolo-warehouse-${Date.now()}`,
       });
       const data = await apiGet(`/api/np/warehouses?${params.toString()}`);
@@ -1002,7 +1048,7 @@
       renderWarehouseSuggestions(Array.isArray(data.warehouses) ? data.warehouses : []);
     } catch (error) {
       if (requestId !== state.warehouseRequestId) return;
-      renderSuggestionMessage(warehouseSuggestions, 'Не вдалося завантажити відділення');
+      renderSuggestionMessage(warehouseSuggestions, `Не вдалося завантажити ${targetLabel.toLocaleLowerCase('uk-UA')}`);
     }
   }, 260);
 
@@ -1012,6 +1058,7 @@
     cityInput.value = [city.name, city.area].filter(Boolean).join(', ');
     warehouseInput.value = '';
     warehouseInput.disabled = false;
+    updateDeliveryMethodUi({ resetWarehouse: false });
     warehouseInput.focus();
     clearFieldError(cityInput);
     hideSuggestions(citySuggestions);
@@ -1101,10 +1148,6 @@
     return value === 'call' ? 'Зателефонуйте мені' : 'Напишіть мені';
   }
 
-  function getDeliveryMethodFromWarehouse(name) {
-    return /поштомат/i.test(String(name || '')) ? 'postomat' : 'branch';
-  }
-
   function readTracking() {
     const params = new URLSearchParams(window.location.search);
     const tracking = {
@@ -1175,7 +1218,7 @@
     }
 
     if (!state.selectedWarehouse) {
-      fieldError(warehouseInput, 'Оберіть відділення або поштомат зі списку');
+      fieldError(warehouseInput, `Оберіть ${getDeliveryTargetLabel().toLocaleLowerCase('uk-UA')} зі списку`);
       valid = false;
     }
 
@@ -1201,11 +1244,13 @@
     const name = splitName(fullName);
     const subtotal = centsToUah((state.cart && (state.cart.items_subtotal_price || state.cart.total_price)) || 0);
     const contactLabel = getSelectedContactLabel();
+    const deliveryTarget = getDeliveryTargetLabel().toLocaleLowerCase('uk-UA');
     const commentParts = [
       comment,
-      instagram ? `Instagram: ${instagram}` : '',
+      instagram ? `Instagram/Telegram: ${instagram}` : '',
       `Як зв'язатись: ${contactLabel}`,
-      'Доставка: Нова пошта, оплата доставки на пошті',
+      `Доставка: Нова пошта (${deliveryTarget}), оплата доставки на пошті`,
+      "Передплата: менеджер зв'яжеться для проведення мінімальної передплати 200 грн",
     ].filter(Boolean);
     const warehouseName = state.selectedWarehouse.name || warehouseInput.value;
 
@@ -1224,7 +1269,7 @@
       shipping_type: 'ukraine',
       shipping: {
         type: 'ukraine',
-        delivery_method: getDeliveryMethodFromWarehouse(warehouseName),
+        delivery_method: getSelectedDeliveryMethod(),
         city: state.selectedCity.name || cityInput.value,
         city_ref: state.selectedCity.ref || '',
         warehouse: warehouseName,
@@ -1310,6 +1355,16 @@
     if (state.selectedCity) searchWarehouses();
   });
 
+  deliveryMethodInputs.forEach(function (input) {
+    input.addEventListener('change', function () {
+      updateDeliveryMethodUi();
+      if (!state.selectedCity) return;
+      warehouseInput.disabled = false;
+      warehouseInput.focus();
+      searchWarehouses();
+    });
+  });
+
   citySuggestions.addEventListener('click', function (event) {
     const button = event.target.closest('[data-city-index]');
     if (!button) return;
@@ -1342,6 +1397,7 @@
   });
 
   form.addEventListener('submit', submitOrder);
+  updateDeliveryMethodUi({ resetWarehouse: false });
   loadCart();
 })();
 </script>
