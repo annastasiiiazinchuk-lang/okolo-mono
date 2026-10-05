@@ -41,6 +41,16 @@ const PAYMENT_STATUS_TAGS = new Set([
   'not_paid_300',
 ]);
 
+export function normalizeShopifyPhone(value: unknown): string {
+  const raw = asString(value).replace(/[^\d+]/g, '');
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+  if (raw.startsWith('+')) return `+${digits}`;
+  if (digits.startsWith('380')) return `+${digits}`;
+  if (digits.startsWith('0')) return `+38${digits}`;
+  return `+${digits}`;
+}
+
 const COUNTRY_CODE_BY_NAME: Record<string, string> = {
   austria: 'AT',
   австрія: 'AT',
@@ -436,7 +446,7 @@ export function buildShippingAddress(body: CheckoutPayload) {
   return {
     first_name: asString(customer.first_name),
     last_name: asString(customer.last_name),
-    phone: asString(customer.phone),
+    phone: normalizeShopifyPhone(customer.phone),
     address1: address1 || 'Custom checkout',
     address2: isInternational ? asString(shipping.apartment) : domesticAddress2,
     city: isInternational ? asString(shipping.intl_city) || asString(shipping.city) : asString(shipping.city),
@@ -550,6 +560,7 @@ export function buildShopifyOrderPayload(
   options: ShopifyOrderBuildOptions = {},
 ) {
   const customer = body.customer || {};
+  const phone = normalizeShopifyPhone(customer.phone);
   const paymentType = normalizePaymentTypeForShopify(body.payment_type);
   const cartTotal = getCartTotal(body);
   const lineItems = buildLineItems(body);
@@ -575,7 +586,7 @@ export function buildShopifyOrderPayload(
 
   const order: Record<string, unknown> = {
     email: asString(customer.email),
-    phone: asString(customer.phone),
+    phone,
     financial_status: options.financialStatus || 'pending',
     currency: 'UAH',
     tax_exempt: true,

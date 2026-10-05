@@ -6,6 +6,7 @@ import {
   buildShopifyOrderPayload,
   getPaymentAmount,
   getShippingPrice,
+  normalizeShopifyPhone,
 } from '../../lib/services/shopify/shopify-order';
 import type { CheckoutPayload } from '../../lib/types/checkout';
 
@@ -59,13 +60,19 @@ describe('Shopify order mapping', () => {
     const payload = buildShopifyOrderPayload(basePayload, getPaymentAmount(basePayload));
 
     expect(payload.order.email).toBe('test@example.com');
-    expect(payload.order.phone).toBe('0682345729');
+    expect(payload.order.phone).toBe('+380682345729');
     expect(payload.order.customer).toBeUndefined();
     expect(payload.order.shipping_address).toMatchObject({
       first_name: 'Анастасія',
       last_name: 'Зінчук',
-      phone: '0682345729',
+      phone: '+380682345729',
     });
+  });
+
+  test('normalizes Ukrainian phone numbers for Shopify', () => {
+    expect(normalizeShopifyPhone('380682345729')).toBe('+380682345729');
+    expect(normalizeShopifyPhone('0682345729')).toBe('+380682345729');
+    expect(normalizeShopifyPhone('+380 (68) 234-57-29')).toBe('+380682345729');
   });
 
   test('order additional details include payment and delivery fields for integrations', () => {

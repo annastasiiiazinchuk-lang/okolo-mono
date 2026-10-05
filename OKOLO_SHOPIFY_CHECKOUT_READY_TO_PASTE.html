@@ -844,7 +844,12 @@
   }
 
   function normalizePhone(value) {
-    return String(value || '').replace(/[^\d+]/g, '');
+    const cleaned = String(value || '').replace(/[^\d+]/g, '');
+    const digits = cleaned.replace(/\D/g, '');
+    if (cleaned.startsWith('+')) return `+${digits}`;
+    if (digits.startsWith('380')) return `+${digits}`;
+    if (digits.startsWith('0')) return `+38${digits}`;
+    return digits ? `+${digits}` : '';
   }
 
   function centsToUah(cents) {
