@@ -56,8 +56,8 @@ services:
         sync: false
     healthCheckPath: /api/health
     autoDeployTrigger: commit
-    plan: 0.1c-256mb
+    plan: free
 
 databases:
   - name: okolo-mono-db
-    plan: free
+    plan: 0.1c-256mb
