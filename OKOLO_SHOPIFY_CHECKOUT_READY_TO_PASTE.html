@@ -785,10 +785,6 @@
           <span>Товари (<span id="okolo-total-items">0</span>)</span>
           <strong id="okolo-subtotal">0 грн</strong>
         </div>
-        <div class="okolo-total-row">
-          <span>Доставка</span>
-          <strong id="okolo-delivery">0 грн</strong>
-        </div>
         <div class="okolo-total-row okolo-grand-total">
           <span>Всього до сплати</span>
           <strong id="okolo-grand-total">0 грн</strong>
@@ -805,7 +801,6 @@
 <script>
 (function () {
   const API_BASE_URL = 'https://okolo-mono.onrender.com';
-  const DELIVERY_LABEL = 'Оплата на пошті';
 
   const form = document.getElementById('okoloOrderForm');
   const submitButton = document.getElementById('okolo-submit');
@@ -814,7 +809,6 @@
   const itemsCountEl = document.getElementById('okolo-items-count');
   const totalItemsEl = document.getElementById('okolo-total-items');
   const subtotalEl = document.getElementById('okolo-subtotal');
-  const deliveryEl = document.getElementById('okolo-delivery');
   const grandTotalEl = document.getElementById('okolo-grand-total');
   const cityInput = document.getElementById('okolo-city');
   const warehouseInput = document.getElementById('okolo-warehouse');
@@ -1039,7 +1033,6 @@
     itemsCountEl.textContent = String(cart.item_count || 0);
     totalItemsEl.textContent = String(cart.item_count || 0);
     subtotalEl.textContent = formatUah(subtotal);
-    deliveryEl.textContent = items.length ? DELIVERY_LABEL : '0 грн';
     grandTotalEl.textContent = formatUah(subtotal);
 
     if (!items.length) {
