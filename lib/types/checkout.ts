@@ -1,9 +1,10 @@
 import { z } from 'zod';
 
 const stringish = z.union([z.string(), z.number()]).optional();
-const requiredEmail = z.string().trim()
-  .min(1, 'Введіть, будь ласка, e-mail')
-  .email('Введіть коректний e-mail');
+const optionalEmail = z.preprocess(
+  (value) => (typeof value === 'string' ? value.trim() : value),
+  z.union([z.literal(''), z.string().email('Введіть коректний e-mail')]).optional(),
+).transform((value) => value || '');
 
 export const checkoutPayloadSchema = z.object({
   locale: z.string().optional(),
@@ -16,7 +17,7 @@ export const checkoutPayloadSchema = z.object({
     first_name: z.string().optional(),
     last_name: z.string().optional(),
     phone: z.string().optional(),
-    email: requiredEmail,
+    email: optionalEmail,
   }),
   shipping_type: z.enum(['ukraine', 'international']).default('ukraine'),
   shipping: z.object({

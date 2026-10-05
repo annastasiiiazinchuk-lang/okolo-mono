@@ -29,8 +29,8 @@ const basePayload = {
 };
 
 describe('checkout payload validation', () => {
-  test('requires customer email', () => {
-    expect(checkoutPayloadSchema.safeParse({
+  test('accepts optional customer email', () => {
+    const emptyEmail = checkoutPayloadSchema.parse({
       ...basePayload,
       customer: {
         first_name: 'Анастасія',
@@ -38,14 +38,27 @@ describe('checkout payload validation', () => {
         phone: '+380682345729',
         email: '',
       },
-    }).success).toBe(false);
+    });
 
-    expect(checkoutPayloadSchema.safeParse({
+    const missingEmail = checkoutPayloadSchema.parse({
       ...basePayload,
       customer: {
         first_name: 'Анастасія',
         last_name: 'Зінчук',
         phone: '+380682345729',
+      },
+    });
+
+    expect(emptyEmail.customer.email).toBe('');
+    expect(missingEmail.customer.email).toBe('');
+  });
+
+  test('rejects invalid customer email', () => {
+    expect(checkoutPayloadSchema.safeParse({
+      ...basePayload,
+      customer: {
+        ...basePayload.customer,
+        email: 'instagram only',
       },
     }).success).toBe(false);
   });

@@ -541,6 +541,33 @@ describe('Shopify order mapping', () => {
     expect(address.address2).toBe('Відділення');
   });
 
+  test('Nova Poshta shipping price creates a domestic shipping line', () => {
+    const novaPoshtaPayload: CheckoutPayload = {
+      ...basePayload,
+      payment_type: 'no_prepayment',
+      amount: 0,
+      shipping: {
+        ...basePayload.shipping,
+        shipping_price: 80,
+      },
+    };
+    const payload = buildShopifyOrderPayload(novaPoshtaPayload, getPaymentAmount(novaPoshtaPayload));
+
+    expect(getShippingPrice(novaPoshtaPayload)).toBe(80);
+    expect(payload.order.shipping_lines).toEqual([
+      {
+        title: 'Нова пошта',
+        price: '80.00',
+        code: 'nova_poshta',
+        source: 'custom_checkout',
+        tax_lines: [],
+      },
+    ]);
+    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
+      { name: 'delivery_price', value: '80' },
+    ]));
+  });
+
   test('Nova Poshta address delivery maps street/house separately from apartment', () => {
     const address = buildShippingAddress({
       ...basePayload,
