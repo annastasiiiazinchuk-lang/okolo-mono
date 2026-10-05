@@ -1246,6 +1246,18 @@
     }
   }
 
+  function thankYouUrl(data) {
+    const fallback = data.redirectUrl || '/';
+    try {
+      const url = new URL(fallback, window.location.origin);
+      if (data.shopifyOrderName) url.searchParams.set('order', data.shopifyOrderName);
+      if (data.reference) url.searchParams.set('reference', data.reference);
+      return url.toString();
+    } catch (error) {
+      return fallback;
+    }
+  }
+
   async function submitOrder(event) {
     event.preventDefault();
     if (state.isSubmitting || !validateForm()) return;
@@ -1270,7 +1282,7 @@
 
       setStatus(data.message || 'Замовлення оформлено. Переходимо далі...', 'success');
       await clearCart();
-      window.location.href = data.redirectUrl || '/';
+      window.location.href = thankYouUrl(data);
     } catch (error) {
       setStatus(error.message || 'Не вдалося оформити замовлення. Спробуйте ще раз.', 'error');
       state.isSubmitting = false;

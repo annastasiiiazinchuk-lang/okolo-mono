@@ -1,330 +1,322 @@
 <style>
+  :root {
+    --okolo-black: #080808;
+    --okolo-text: #171717;
+    --okolo-muted: #7d7d7d;
+    --okolo-line: #e7e7e7;
+    --okolo-soft: #f7f7f7;
+    --okolo-radius: 0;
+    --okolo-font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
   .okolo-thank-you {
-    max-width: 760px;
-    margin: 56px auto;
-    padding: 0 18px;
-    color: #20251f;
-    font-family: inherit;
+    color: var(--okolo-text);
+    font-family: var(--okolo-font);
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 42px 48px 64px;
   }
 
-  .okolo-thank-you-box {
-    border: 1px solid #dfe8dd;
-    border-radius: 8px;
-    padding: 28px;
-    background: #fbfcfa;
-  }
-
-  .okolo-thank-you h1 {
-    margin: 0 0 12px;
-    font-size: 30px;
-    line-height: 1.2;
+  .okolo-thank-you *,
+  .okolo-thank-you *::before,
+  .okolo-thank-you *::after {
+    box-sizing: border-box;
     letter-spacing: 0;
   }
 
-  .okolo-thank-you p {
-    margin: 8px 0 0;
-    font-size: 16px;
-    line-height: 1.55;
+  .okolo-thank-you-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 34px;
+    color: #a0a0a0;
+    font-size: 13px;
+    line-height: 1.4;
   }
 
-  .okolo-thank-you-status {
-    margin-top: 18px;
-    padding: 14px 16px;
-    border-radius: 8px;
-    background: #edf5e7;
-    color: #2f5522;
+  .okolo-thank-you-breadcrumbs span:last-child {
+    color: #1f1f1f;
     font-weight: 600;
   }
 
-  .okolo-thank-you-status[data-state="pending"] {
-    background: #fff8e6;
-    color: #745118;
+  .okolo-thank-you-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.06fr) minmax(360px, 0.94fr);
+    gap: 58px;
+    align-items: start;
   }
 
-  .okolo-thank-you-status[data-state="failed"] {
-    background: #fdecec;
-    color: #8c2c2b;
+  .okolo-thank-you-main {
+    min-width: 0;
+  }
+
+  .okolo-thank-you-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    margin-bottom: 24px;
+    border-radius: 999px;
+    background: var(--okolo-black);
+    color: #fff;
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .okolo-thank-you h1 {
+    margin: 0 0 18px;
+    color: var(--okolo-black);
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1.12;
+    text-transform: uppercase;
+  }
+
+  .okolo-thank-you-lead {
+    max-width: 680px;
+    margin: 0 0 30px;
+    color: #3f3f3f;
+    font-size: 16px;
+    line-height: 1.65;
+  }
+
+  .okolo-thank-you-order {
+    display: none;
+    margin: 0 0 26px;
+    padding: 16px 18px;
+    border: 1px solid var(--okolo-line);
+    background: var(--okolo-soft);
+    color: var(--okolo-black);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .okolo-thank-you-order.is-visible {
+    display: block;
+  }
+
+  .okolo-thank-you-order strong {
+    font-weight: 800;
+  }
+
+  .okolo-thank-you-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 30px;
+  }
+
+  .okolo-thank-you-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 0 22px;
+    border: 1px solid var(--okolo-black);
+    border-radius: var(--okolo-radius);
+    background: var(--okolo-black);
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: opacity 0.15s ease;
+  }
+
+  .okolo-thank-you-button:hover {
+    opacity: 0.9;
+  }
+
+  .okolo-thank-you-button.secondary {
+    background: #fff;
+    color: var(--okolo-black);
+  }
+
+  .okolo-thank-you-panel {
+    padding: 31px 34px 34px;
+    border: 1px solid var(--okolo-line);
+    background: #fff;
+  }
+
+  .okolo-thank-you-panel h2 {
+    margin: 0 0 26px;
+    color: var(--okolo-black);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+
+  .okolo-thank-you-list {
+    display: grid;
+    gap: 22px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .okolo-thank-you-item {
+    display: grid;
+    grid-template-columns: 31px minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+  }
+
+  .okolo-thank-you-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 31px;
+    height: 31px;
+    border-radius: 999px;
+    background: var(--okolo-black);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .okolo-thank-you-item strong {
+    display: block;
+    margin: 0 0 5px;
+    color: var(--okolo-black);
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.35;
+  }
+
+  .okolo-thank-you-item span {
+    display: block;
+    color: #5f5f5f;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .okolo-thank-you-note {
+    margin: 28px 0 0;
+    padding-top: 22px;
+    border-top: 1px solid var(--okolo-line);
+    color: #5f5f5f;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  @media (max-width: 1020px) {
+    .okolo-thank-you {
+      padding: 32px 22px 48px;
+    }
+
+    .okolo-thank-you-layout {
+      grid-template-columns: 1fr;
+      gap: 34px;
+    }
+
+    .okolo-thank-you-panel {
+      padding: 25px 22px 28px;
+    }
+  }
+
+  @media (max-width: 680px) {
+    .okolo-thank-you {
+      padding: 24px 16px 42px;
+    }
+
+    .okolo-thank-you-breadcrumbs {
+      margin-bottom: 24px;
+      font-size: 12px;
+    }
+
+    .okolo-thank-you h1 {
+      font-size: 25px;
+    }
+
+    .okolo-thank-you-lead {
+      font-size: 15px;
+    }
+
+    .okolo-thank-you-actions {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .okolo-thank-you-button {
+      width: 100%;
+    }
   }
 </style>
 
-<section class="okolo-thank-you" aria-live="polite">
-  <div class="okolo-thank-you-box">
-    <h1>Дякуємо за замовлення</h1>
-    <p>Ми перевіряємо статус оплати. Після підтвердження замовлення автоматично оновиться.</p>
-    <div class="okolo-thank-you-status" id="okolo-payment-status" data-state="pending">
-      Очікуємо підтвердження оплати...
-    </div>
+<section class="okolo-thank-you" aria-label="Дякуємо за замовлення Okolo">
+  <nav class="okolo-thank-you-breadcrumbs" aria-label="Навігація">
+    <span>Головна</span>
+    <span>›</span>
+    <span>Оформлення замовлення</span>
+    <span>›</span>
+    <span>Готово</span>
+  </nav>
+
+  <div class="okolo-thank-you-layout">
+    <main class="okolo-thank-you-main">
+      <div class="okolo-thank-you-mark" aria-hidden="true">✓</div>
+      <h1>Дякуємо за замовлення</h1>
+      <p class="okolo-thank-you-lead">
+        Ваше замовлення прийнято. Ми перевіримо деталі та зв'яжемося з вами найближчим часом у вибраний спосіб.
+      </p>
+
+      <div class="okolo-thank-you-order" id="okolo-thank-you-order">
+        Номер замовлення: <strong id="okolo-thank-you-order-number"></strong>
+      </div>
+
+      <div class="okolo-thank-you-actions">
+        <a class="okolo-thank-you-button" href="/collections/all">Продовжити покупки</a>
+        <a class="okolo-thank-you-button secondary" href="/">На головну</a>
+      </div>
+    </main>
+
+    <aside class="okolo-thank-you-panel" aria-label="Що далі">
+      <h2>Що далі</h2>
+      <ol class="okolo-thank-you-list">
+        <li class="okolo-thank-you-item">
+          <span class="okolo-thank-you-number">1</span>
+          <span>
+            <strong>Підтвердимо замовлення</strong>
+            <span>Менеджер напише або зателефонує, щоб уточнити деталі.</span>
+          </span>
+        </li>
+        <li class="okolo-thank-you-item">
+          <span class="okolo-thank-you-number">2</span>
+          <span>
+            <strong>Передамо в Нову пошту</strong>
+            <span>Після відправки ви отримаєте дані для отримання посилки.</span>
+          </span>
+        </li>
+        <li class="okolo-thank-you-item">
+          <span class="okolo-thank-you-number">3</span>
+          <span>
+            <strong>Оплата при отриманні</strong>
+            <span>Замовлення і доставку ви оплачуєте у відділенні або поштоматі Нової пошти.</span>
+          </span>
+        </li>
+      </ol>
+      <p class="okolo-thank-you-note">
+        Якщо потрібно змінити контакт або відділення, напишіть нам до відправки замовлення.
+      </p>
+    </aside>
   </div>
 </section>
 
 <script>
-  window.OKOLO_META_PIXEL_ID = window.OKOLO_META_PIXEL_ID || '';
-  window.OKOLO_GOOGLE_ADS_CONVERSION_ID = window.OKOLO_GOOGLE_ADS_CONVERSION_ID || '';
-  window.OKOLO_GOOGLE_ADS_PURCHASE_LABEL = window.OKOLO_GOOGLE_ADS_PURCHASE_LABEL || '';
-  window.OKOLO_GTM_ID = window.OKOLO_GTM_ID || '';
-  window.OKOLO_GA4_MEASUREMENT_ID = window.OKOLO_GA4_MEASUREMENT_ID || '';
-  window.OKOLO_BROWSER_PURCHASE_ENABLED = false;
-</script>
-
-<script>
 (function () {
-  const API_BASE_URL = 'https://okolo-mono.onrender.com';
-  const PENDING_PAYMENT_KEY = 'okolo_pending_payment';
-  const statusEl = document.getElementById('okolo-payment-status');
+  const params = new URLSearchParams(window.location.search);
+  const orderNumber = params.get('order') || params.get('orderName') || params.get('order_name') || '';
+  const orderBox = document.getElementById('okolo-thank-you-order');
+  const orderNumberEl = document.getElementById('okolo-thank-you-order-number');
 
-  function setStatus(message, state) {
-    if (!statusEl) return;
-    statusEl.textContent = message;
-    statusEl.dataset.state = state || 'pending';
+  if (orderNumber && orderBox && orderNumberEl) {
+    orderNumberEl.textContent = orderNumber;
+    orderBox.classList.add('is-visible');
   }
-
-  function readJsonStorage(key) {
-    try {
-      return JSON.parse(localStorage.getItem(key) || '{}');
-    } catch {
-      return {};
-    }
-  }
-
-  function writeJsonStorage(key, value) {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch {}
-  }
-
-  function getQueryPayment() {
-    const params = new URLSearchParams(window.location.search);
-    return {
-      invoiceId: params.get('invoiceId') || params.get('invoice_id') || '',
-      reference: params.get('reference') || params.get('ref') || '',
-    };
-  }
-
-  function getPendingPayment() {
-    const query = getQueryPayment();
-    const saved = readJsonStorage(PENDING_PAYMENT_KEY);
-    return {
-      ...saved,
-      invoiceId: query.invoiceId || saved.invoiceId || '',
-      reference: query.reference || saved.reference || '',
-    };
-  }
-
-  function getStatusUrl(payment) {
-    const url = new URL(`${API_BASE_URL}/api/payments/status`);
-    if (payment.invoiceId) {
-      url.searchParams.set('invoiceId', payment.invoiceId);
-    } else if (payment.reference) {
-      url.searchParams.set('reference', payment.reference);
-    }
-    return url.toString();
-  }
-
-  function ensureGoogleTags() {
-    const gtmId = String(window.OKOLO_GTM_ID || '').trim();
-    window.dataLayer = window.dataLayer || [];
-
-    if (gtmId && !window.__okoloGtmLoaded && !document.querySelector(`script[src*="googletagmanager.com/gtm.js?id=${encodeURIComponent(gtmId)}"]`)) {
-      window.__okoloGtmLoaded = gtmId;
-      window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
-      const script = document.createElement('script');
-      const firstScript = document.getElementsByTagName('script')[0];
-      script.async = true;
-      script.src = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(gtmId)}`;
-      firstScript.parentNode.insertBefore(script, firstScript);
-    }
-
-    const googleAdsId = String(window.OKOLO_GOOGLE_ADS_CONVERSION_ID || '').trim();
-    const ga4Id = String(window.OKOLO_GA4_MEASUREMENT_ID || '').trim();
-    const primaryGoogleTagId = googleAdsId || ga4Id;
-    if (!primaryGoogleTagId) return;
-
-    window.gtag = window.gtag || function () {
-      window.dataLayer.push(arguments);
-    };
-
-    if (!window.__okoloGoogleTagLoaded && !document.querySelector(`script[src*="googletagmanager.com/gtag/js?id=${encodeURIComponent(primaryGoogleTagId)}"]`)) {
-      window.__okoloGoogleTagLoaded = primaryGoogleTagId;
-      const script = document.createElement('script');
-      script.async = true;
-      script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(primaryGoogleTagId)}`;
-      document.head.appendChild(script);
-    }
-
-    window.gtag('js', new Date());
-    if (googleAdsId) window.gtag('config', googleAdsId);
-    if (ga4Id && ga4Id !== googleAdsId) window.gtag('config', ga4Id);
-  }
-
-  function ensureMetaPixel() {
-    const metaPixelId = String(window.OKOLO_META_PIXEL_ID || '').trim();
-    if (!metaPixelId || window.__okoloMetaPixelReady === metaPixelId) return;
-
-    if (typeof window.fbq !== 'function') {
-      (function (f, b, e, v, n, t, s) {
-        if (f.fbq) return;
-        n = f.fbq = function () {
-          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-        };
-        if (!f._fbq) f._fbq = n;
-        n.push = n;
-        n.loaded = true;
-        n.version = '2.0';
-        n.queue = [];
-        t = b.createElement(e);
-        t.async = true;
-        t.src = v;
-        s = b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t, s);
-      })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
-    }
-
-    window.fbq('init', metaPixelId);
-    window.fbq('track', 'PageView');
-    window.__okoloMetaPixelReady = metaPixelId;
-  }
-
-  function getPurchasePayload(status, pending) {
-    const transactionId = String(status.transactionId || status.invoiceId || pending.transactionId || pending.invoiceId || pending.reference || '').trim();
-    const items = Array.isArray(status.items) && status.items.length
-      ? status.items
-      : Array.isArray(pending.items)
-        ? pending.items
-        : [];
-    const value = Number(status.value || pending.value || pending.amount || 0) || 0;
-    const currency = String(status.currency || pending.currency || 'UAH');
-    const eventId = String(status.eventId || (transactionId ? `mono_${transactionId}` : '')).trim();
-
-    return {
-      transaction_id: transactionId,
-      order_id: String(status.orderId || pending.orderId || ''),
-      order_name: String(status.orderName || pending.orderName || ''),
-      event_id: eventId,
-      currency,
-      value,
-      items,
-      payment_type: String(status.paymentType || pending.paymentType || ''),
-    };
-  }
-
-  function wasPurchaseTracked(transactionId) {
-    return Boolean(transactionId && localStorage.getItem(`okolo_purchase_tracked_${transactionId}`));
-  }
-
-  function markPurchaseTracked(transactionId) {
-    if (transactionId) localStorage.setItem(`okolo_purchase_tracked_${transactionId}`, 'true');
-  }
-
-  function isBrowserPurchaseEnabled() {
-    return window.OKOLO_BROWSER_PURCHASE_ENABLED === true
-      || String(window.OKOLO_BROWSER_PURCHASE_ENABLED).toLowerCase() === 'true';
-  }
-
-  function trackPurchase(status, pending) {
-    const payload = getPurchasePayload(status, pending);
-    if (!payload.transaction_id || wasPurchaseTracked(payload.transaction_id)) return;
-
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({
-      event: 'purchase',
-      ...payload,
-      ecommerce: {
-        transaction_id: payload.transaction_id,
-        value: payload.value,
-        currency: payload.currency,
-        items: payload.items,
-      },
-    });
-
-    if (typeof window.gtag === 'function') {
-      window.gtag('event', 'purchase', {
-        transaction_id: payload.transaction_id,
-        value: payload.value,
-        currency: payload.currency,
-        items: payload.items,
-      });
-
-      const googleAdsId = String(window.OKOLO_GOOGLE_ADS_CONVERSION_ID || '').trim();
-      const purchaseLabel = String(window.OKOLO_GOOGLE_ADS_PURCHASE_LABEL || '').trim();
-      if (googleAdsId && purchaseLabel) {
-        window.gtag('event', 'conversion', {
-          send_to: `${googleAdsId}/${purchaseLabel}`,
-          value: payload.value,
-          currency: payload.currency,
-          transaction_id: payload.transaction_id,
-        });
-      }
-    }
-
-    if (typeof window.fbq === 'function') {
-      window.fbq('track', 'Purchase', {
-        currency: payload.currency,
-        value: payload.value,
-        content_ids: payload.items.map((item) => item.item_id).filter(Boolean),
-        contents: payload.items,
-        content_type: 'product',
-      }, payload.event_id ? { eventID: payload.event_id } : undefined);
-    }
-
-    markPurchaseTracked(payload.transaction_id);
-    writeJsonStorage(PENDING_PAYMENT_KEY, {
-      ...pending,
-      purchaseTracked: true,
-      purchaseTrackedAt: Date.now(),
-    });
-  }
-
-  async function fetchPaymentStatus(payment) {
-    const response = await fetch(getStatusUrl(payment), {
-      headers: { Accept: 'application/json' },
-    });
-    if (!response.ok) throw new Error(`Payment status ${response.status}`);
-    return response.json();
-  }
-
-  async function waitForSuccess(payment) {
-    const attempts = 24;
-    for (let index = 0; index < attempts; index += 1) {
-      try {
-        const status = await fetchPaymentStatus(payment);
-        if (status.status === 'SUCCESS') return status;
-        if (status.status === 'FAILED' || status.status === 'CANCELLED') {
-          setStatus('Оплату не завершено. Якщо кошти списались, напишіть нам.', 'failed');
-          return null;
-        }
-      } catch (error) {
-        console.warn('Payment status check failed:', error);
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 2500));
-    }
-
-    setStatus('Оплата ще обробляється. Замовлення підтвердиться автоматично після відповіді банку.', 'pending');
-    return null;
-  }
-
-  async function init() {
-    ensureGoogleTags();
-    ensureMetaPixel();
-
-    const pending = getPendingPayment();
-    if (!pending.invoiceId && !pending.reference) {
-      setStatus('Дякуємо. Якщо оплату завершено, замовлення підтвердиться автоматично.', 'pending');
-      return;
-    }
-
-    const status = await waitForSuccess(pending);
-    if (!status) return;
-
-    if (isBrowserPurchaseEnabled()) {
-      trackPurchase(status, pending);
-    }
-    setStatus('Оплату підтверджено. Дякуємо за покупку!', 'success');
-  }
-
-  init().catch((error) => {
-    console.error(error);
-    setStatus('Не вдалося перевірити оплату. Якщо кошти списались, замовлення підтвердиться автоматично.', 'pending');
-  });
 })();
 </script>
