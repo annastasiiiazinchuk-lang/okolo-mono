@@ -153,7 +153,7 @@
 
   .okolo-thank-you-list {
     display: grid;
-    gap: 22px;
+    gap: 24px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -161,25 +161,26 @@
 
   .okolo-thank-you-item {
     display: grid;
-    grid-template-columns: 31px minmax(0, 1fr);
-    gap: 14px;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 16px;
     align-items: start;
   }
 
   .okolo-thank-you-number {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
-    width: 31px;
-    height: 31px;
+    width: 34px;
+    height: 34px;
     border-radius: 999px;
     background: var(--okolo-black);
     color: #fff;
     font-size: 13px;
     font-weight: 800;
+    line-height: 1;
   }
 
-  .okolo-thank-you-item strong {
+  .okolo-thank-you-copy strong {
     display: block;
     margin: 0 0 5px;
     color: var(--okolo-black);
@@ -188,7 +189,7 @@
     line-height: 1.35;
   }
 
-  .okolo-thank-you-item span {
+  .okolo-thank-you-copy span {
     display: block;
     color: #5f5f5f;
     font-size: 13px;
@@ -245,6 +246,24 @@
     .okolo-thank-you-button {
       width: 100%;
     }
+
+    .okolo-thank-you-panel {
+      padding: 24px 18px 26px;
+    }
+
+    .okolo-thank-you-list {
+      gap: 22px;
+    }
+
+    .okolo-thank-you-item {
+      grid-template-columns: 32px minmax(0, 1fr);
+      gap: 14px;
+    }
+
+    .okolo-thank-you-number {
+      width: 32px;
+      height: 32px;
+    }
   }
 </style>
 
@@ -280,24 +299,24 @@
       <ol class="okolo-thank-you-list">
         <li class="okolo-thank-you-item">
           <span class="okolo-thank-you-number">1</span>
-          <span>
+          <div class="okolo-thank-you-copy">
             <strong>Підтвердимо замовлення</strong>
             <span>Менеджер напише або зателефонує, щоб уточнити деталі.</span>
-          </span>
+          </div>
         </li>
         <li class="okolo-thank-you-item">
           <span class="okolo-thank-you-number">2</span>
-          <span>
+          <div class="okolo-thank-you-copy">
             <strong>Передамо в Нову пошту</strong>
             <span>Після відправки ви отримаєте дані для отримання посилки.</span>
-          </span>
+          </div>
         </li>
         <li class="okolo-thank-you-item">
           <span class="okolo-thank-you-number">3</span>
-          <span>
+          <div class="okolo-thank-you-copy">
             <strong>Оплата при отриманні</strong>
             <span>Замовлення і доставку ви оплачуєте у відділенні або поштоматі Нової пошти.</span>
-          </span>
+          </div>
         </li>
       </ol>
       <p class="okolo-thank-you-note">
