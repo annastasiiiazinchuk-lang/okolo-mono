@@ -46,12 +46,14 @@ export async function handleCreateInvoice(request: Request): Promise<Response> {
   };
 
   try {
-    body.payment_type = 'no_prepayment';
+    body.payment_type = body.payment_type === 'full' ? 'full' : 'no_prepayment';
     const amount = getPaymentAmount(body);
     const shopifyOrder = await createShopifyOrder(body, amount);
     void sendSitniksOrder(body, shopifyOrder).catch((error) => {
-      console.error('[Sitniks] Failed to send no-prepayment order:', error);
+      console.error('[Sitniks] Failed to send manual-payment order:', error);
     });
+
+    const isFullPayment = body.payment_type === 'full';
 
     return json({
       invoiceId: '',
@@ -59,14 +61,16 @@ export async function handleCreateInvoice(request: Request): Promise<Response> {
       reference: `shopify-${shopifyOrder.id}`,
       amount,
       paymentType: body.payment_type,
-      paymentFlow: 'shopify_order',
-      message: 'Замовлення оформлено. Оплата при отриманні.',
+      paymentFlow: isFullPayment ? 'manual_full_payment' : 'cash_on_delivery',
+      message: isFullPayment
+        ? 'Замовлення оформлено. Реквізити для оплати на наступній сторінці.'
+        : 'Замовлення оформлено. Оплата при отриманні.',
       redirectUrl: env.redirectUrl,
       shopifyOrderId: shopifyOrder.id,
       shopifyOrderName: shopifyOrder.name,
     });
   } catch (error) {
-    console.error('[Orders] Error creating no-prepayment order:', error);
+    console.error('[Orders] Error creating manual-payment order:', error);
     return json({
       error: 'Failed to create order',
       details: error instanceof Error ? error.message : String(error),
@@ -78,6 +82,10 @@ export async function handlePaymentOptions(): Promise<Response> {
   return json({
     cashOnDelivery: {
       enabled: true,
+    },
+    fullPayment: {
+      enabled: true,
+      type: 'manual',
     },
   });
 }

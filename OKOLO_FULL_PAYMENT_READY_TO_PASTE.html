@@ -1,0 +1,432 @@
+<style>
+  :root {
+    --okolo-black: #080808;
+    --okolo-text: #171717;
+    --okolo-muted: #6d6d6d;
+    --okolo-line: #e7e7e7;
+    --okolo-soft: #f7f7f7;
+    --okolo-radius: 0;
+    --okolo-font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  .okolo-payment {
+    color: var(--okolo-text);
+    font-family: var(--okolo-font);
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 42px 48px 64px;
+  }
+
+  .okolo-payment *,
+  .okolo-payment *::before,
+  .okolo-payment *::after {
+    box-sizing: border-box;
+    letter-spacing: 0;
+  }
+
+  .okolo-payment-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 34px;
+    color: #a0a0a0;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .okolo-payment-breadcrumbs span:last-child {
+    color: #1f1f1f;
+    font-weight: 700;
+  }
+
+  .okolo-payment-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(390px, 0.82fr);
+    gap: 58px;
+    align-items: start;
+  }
+
+  .okolo-payment-main {
+    min-width: 0;
+  }
+
+  .okolo-payment-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    margin-bottom: 24px;
+    border-radius: 999px;
+    background: var(--okolo-black);
+    color: #fff;
+    font-size: 21px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .okolo-payment h1 {
+    margin: 0 0 18px;
+    color: var(--okolo-black);
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1.12;
+    text-transform: uppercase;
+  }
+
+  .okolo-payment-lead {
+    max-width: 680px;
+    margin: 0 0 28px;
+    color: #3f3f3f;
+    font-size: 16px;
+    line-height: 1.65;
+  }
+
+  .okolo-payment-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0 0 30px;
+  }
+
+  .okolo-payment-summary-item {
+    min-width: 0;
+    padding: 17px 18px;
+    border: 1px solid var(--okolo-line);
+    background: var(--okolo-soft);
+  }
+
+  .okolo-payment-summary-item span {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--okolo-muted);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+
+  .okolo-payment-summary-item strong {
+    display: block;
+    color: var(--okolo-black);
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .okolo-payment-steps {
+    display: grid;
+    gap: 20px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .okolo-payment-step {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .okolo-payment-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: var(--okolo-black);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .okolo-payment-step strong {
+    display: block;
+    margin: 0 0 5px;
+    color: var(--okolo-black);
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.35;
+  }
+
+  .okolo-payment-step div > span {
+    display: block;
+    color: #5f5f5f;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .okolo-payment-card {
+    padding: 31px 34px 34px;
+    border: 1px solid var(--okolo-line);
+    background: #fff;
+  }
+
+  .okolo-payment-card h2 {
+    margin: 0 0 24px;
+    color: var(--okolo-black);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+
+  .okolo-payment-requisites {
+    display: grid;
+    border-top: 1px solid var(--okolo-line);
+  }
+
+  .okolo-payment-row {
+    display: grid;
+    grid-template-columns: minmax(110px, 0.46fr) minmax(0, 1fr);
+    gap: 18px;
+    padding: 17px 0;
+    border-bottom: 1px solid var(--okolo-line);
+  }
+
+  .okolo-payment-row > span {
+    color: var(--okolo-muted);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+
+  .okolo-payment-row > strong {
+    color: var(--okolo-black);
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+
+  .okolo-payment-note {
+    margin: 24px 0 0;
+    padding: 17px 18px;
+    background: var(--okolo-soft);
+    color: #4f4f4f;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .okolo-payment-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 30px;
+  }
+
+  .okolo-payment-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 0 22px;
+    border: 1px solid var(--okolo-black);
+    border-radius: var(--okolo-radius);
+    background: var(--okolo-black);
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: opacity 0.15s ease;
+  }
+
+  .okolo-payment-button:hover {
+    opacity: 0.9;
+  }
+
+  .okolo-payment-button.secondary {
+    background: #fff;
+    color: var(--okolo-black);
+  }
+
+  @media (max-width: 1020px) {
+    .okolo-payment {
+      padding: 32px 22px 48px;
+    }
+
+    .okolo-payment-layout {
+      grid-template-columns: 1fr;
+      gap: 34px;
+    }
+
+    .okolo-payment-card {
+      padding: 25px 22px 28px;
+    }
+  }
+
+  @media (max-width: 680px) {
+    .okolo-payment {
+      padding: 24px 16px 42px;
+    }
+
+    .okolo-payment-breadcrumbs {
+      margin-bottom: 24px;
+      font-size: 12px;
+    }
+
+    .okolo-payment h1 {
+      font-size: 25px;
+    }
+
+    .okolo-payment-lead {
+      font-size: 15px;
+    }
+
+    .okolo-payment-summary {
+      grid-template-columns: 1fr;
+    }
+
+    .okolo-payment-step {
+      grid-template-columns: 32px minmax(0, 1fr);
+      gap: 14px;
+    }
+
+    .okolo-payment-number {
+      width: 32px;
+      height: 32px;
+    }
+
+    .okolo-payment-card {
+      padding: 24px 18px 26px;
+    }
+
+    .okolo-payment-row {
+      grid-template-columns: 1fr;
+      gap: 6px;
+      padding: 15px 0;
+    }
+
+    .okolo-payment-actions {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .okolo-payment-button {
+      width: 100%;
+    }
+  }
+</style>
+
+<section class="okolo-payment" aria-label="Оплата замовлення Okolo">
+  <nav class="okolo-payment-breadcrumbs" aria-label="Навігація">
+    <span>Головна</span>
+    <span>›</span>
+    <span>Оформлення замовлення</span>
+    <span>›</span>
+    <span>Оплата</span>
+  </nav>
+
+  <div class="okolo-payment-layout">
+    <main class="okolo-payment-main">
+      <div class="okolo-payment-mark" aria-hidden="true">₴</div>
+      <h1>Оплата за реквізитами</h1>
+      <p class="okolo-payment-lead">
+        Замовлення прийнято. Нижче будуть реквізити для повної оплати. Після переказу надішліть підтвердження менеджеру в Instagram / Telegram.
+      </p>
+
+      <div class="okolo-payment-summary">
+        <div class="okolo-payment-summary-item" id="okolo-payment-order-box">
+          <span>Номер замовлення</span>
+          <strong id="okolo-payment-order">Очікуємо номер</strong>
+        </div>
+        <div class="okolo-payment-summary-item" id="okolo-payment-amount-box">
+          <span>Сума до оплати</span>
+          <strong id="okolo-payment-amount">Уточнюється</strong>
+        </div>
+      </div>
+
+      <ol class="okolo-payment-steps">
+        <li class="okolo-payment-step">
+          <span class="okolo-payment-number">1</span>
+          <div>
+            <strong>Перевірте суму</strong>
+            <span>Звірте суму замовлення та номер перед оплатою.</span>
+          </div>
+        </li>
+        <li class="okolo-payment-step">
+          <span class="okolo-payment-number">2</span>
+          <div>
+            <strong>Оплатіть за реквізитами</strong>
+            <span>У призначенні платежу вкажіть номер замовлення, якщо він відображається на сторінці.</span>
+          </div>
+        </li>
+        <li class="okolo-payment-step">
+          <span class="okolo-payment-number">3</span>
+          <div>
+            <strong>Надішліть підтвердження</strong>
+            <span>Після оплати надішліть квитанцію менеджеру в Instagram / Telegram, щоб ми швидше передали замовлення в роботу.</span>
+          </div>
+        </li>
+      </ol>
+
+      <div class="okolo-payment-actions">
+        <a class="okolo-payment-button" href="/collections/all">Продовжити покупки</a>
+        <a class="okolo-payment-button secondary" href="/">На головну</a>
+      </div>
+    </main>
+
+    <aside class="okolo-payment-card" aria-label="Реквізити для оплати">
+      <h2>Реквізити</h2>
+      <div class="okolo-payment-requisites">
+        <div class="okolo-payment-row">
+          <span>Отримувач</span>
+          <strong>ВСТАВТЕ НАЗВУ ОТРИМУВАЧА</strong>
+        </div>
+        <div class="okolo-payment-row">
+          <span>IBAN</span>
+          <strong>ВСТАВТЕ IBAN</strong>
+        </div>
+        <div class="okolo-payment-row">
+          <span>ЄДРПОУ / ІПН</span>
+          <strong>ВСТАВТЕ КОД</strong>
+        </div>
+        <div class="okolo-payment-row">
+          <span>Банк</span>
+          <strong>ВСТАВТЕ НАЗВУ БАНКУ</strong>
+        </div>
+        <div class="okolo-payment-row">
+          <span>Призначення</span>
+          <strong>Оплата замовлення <span id="okolo-payment-purpose-order"></span></strong>
+        </div>
+      </div>
+      <p class="okolo-payment-note">
+        Реквізити можна замінити прямо в цьому коді. Якщо потрібно, тут також можна додати номер картки або QR-код для оплати.
+      </p>
+    </aside>
+  </div>
+</section>
+
+<script>
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const orderNumber = params.get('order') || params.get('orderName') || params.get('order_name') || '';
+  const amount = params.get('amount') || '';
+  const orderEl = document.getElementById('okolo-payment-order');
+  const purposeOrderEl = document.getElementById('okolo-payment-purpose-order');
+  const amountEl = document.getElementById('okolo-payment-amount');
+
+  function formatAmount(value) {
+    const number = Number(String(value).replace(',', '.'));
+    if (!Number.isFinite(number) || number <= 0) return '';
+    return `${number.toLocaleString('uk-UA', {
+      minimumFractionDigits: Number.isInteger(number) ? 0 : 2,
+      maximumFractionDigits: 2,
+    })} грн`;
+  }
+
+  if (orderNumber && orderEl) orderEl.textContent = orderNumber;
+  if (orderNumber && purposeOrderEl) purposeOrderEl.textContent = orderNumber;
+
+  const formattedAmount = formatAmount(amount);
+  if (formattedAmount && amountEl) amountEl.textContent = formattedAmount;
+})();
+</script>

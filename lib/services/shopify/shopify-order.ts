@@ -201,11 +201,11 @@ export function isInternationalCheckout(body: CheckoutPayload): boolean {
 }
 
 function legacyPaymentLabel(body: CheckoutPayload, isInternational = false): string {
-  if (isInternational && body.payment_type !== 'no_prepayment') return 'Monobank';
   if (body.payment_type === 'no_prepayment') return 'Накладений платіж';
   if (body.payment_type === 'prepayment') return 'Накладений платіж';
   if (body.payment_type === 'installments') return 'Покупка частинами Monobank';
-  return 'Monobank';
+  if (isInternational) return 'Повна оплата';
+  return 'Повна оплата';
 }
 
 function legacyDeliveryMethodLabel(deliveryMethod: string): string {
@@ -702,7 +702,7 @@ export function buildOrderUpdateAfterPayment(
     if (isPrepayment) return 'Передплата Monobank';
     if (paymentType === 'no_prepayment') return 'Накладений платіж';
     if (paymentType === 'installments') return 'Покупка частинами Monobank';
-    return 'Monobank';
+    return 'Повна оплата';
   })();
   const noteAttributeByName = new Map<string, string>();
 

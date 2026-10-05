@@ -149,7 +149,7 @@ function getCrmPaymentLabel(paymentType: unknown, paid = false): string {
   if (kind === 'no_prepayment') return 'Накладений платіж';
   if (kind === 'prepayment') return paid ? 'Передплата Monobank' : 'Накладений платіж';
   if (kind === 'installments') return 'Покупка частинами Monobank';
-  return 'Monobank';
+  return 'Повна оплата';
 }
 
 function getPaymentTag(paymentType: unknown, paid: boolean): string {

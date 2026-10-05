@@ -749,7 +749,7 @@
           <span>Оплата</span>
         </legend>
 
-        <div class="okolo-options okolo-single-option">
+        <div class="okolo-options">
           <label class="okolo-option">
             <input type="radio" name="payment_type" value="no_prepayment" checked>
             <span class="okolo-option-marker" aria-hidden="true"></span>
@@ -757,6 +757,15 @@
               <span class="okolo-option-title">Післяплата</span>
               <span class="okolo-option-note">Наш менеджер зв'яжеться з Вами для проведення мінімальної передплати 200 грн</span>
               <span class="okolo-option-note">Решта суми оплачується при отриманні через Нову пошту</span>
+            </span>
+          </label>
+
+          <label class="okolo-option">
+            <input type="radio" name="payment_type" value="full">
+            <span class="okolo-option-marker" aria-hidden="true"></span>
+            <span>
+              <span class="okolo-option-title">Повна оплата</span>
+              <span class="okolo-option-note">Реквізити для оплати з'являться на наступній сторінці</span>
             </span>
           </label>
         </div>
@@ -811,6 +820,7 @@
 <script>
 (function () {
   const API_BASE_URL = 'https://okolo-mono.onrender.com';
+  const FULL_PAYMENT_URL = window.OKOLO_FULL_PAYMENT_URL || '/pages/okolo-payment';
 
   const form = document.getElementById('okoloOrderForm');
   const submitButton = document.getElementById('okolo-submit');
@@ -1148,6 +1158,15 @@
     return value === 'call' ? 'Зателефонуйте мені' : 'Напишіть мені';
   }
 
+  function getSelectedPaymentType() {
+    const value = (form.querySelector('input[name="payment_type"]:checked') || {}).value;
+    return value === 'full' ? 'full' : 'no_prepayment';
+  }
+
+  function getSelectedPaymentLabel() {
+    return getSelectedPaymentType() === 'full' ? 'Повна оплата' : 'Післяплата';
+  }
+
   function readTracking() {
     const params = new URLSearchParams(window.location.search);
     const tracking = {
@@ -1245,19 +1264,24 @@
     const subtotal = centsToUah((state.cart && (state.cart.items_subtotal_price || state.cart.total_price)) || 0);
     const contactLabel = getSelectedContactLabel();
     const deliveryTarget = getDeliveryTargetLabel().toLocaleLowerCase('uk-UA');
+    const paymentType = getSelectedPaymentType();
+    const paymentComment = paymentType === 'full'
+      ? "Оплата: повна оплата за реквізитами. Реквізити з'являться на наступній сторінці"
+      : "Передплата: менеджер зв'яжеться для проведення мінімальної передплати 200 грн";
     const commentParts = [
       comment,
       instagram ? `Instagram/Telegram: ${instagram}` : '',
       `Як зв'язатись: ${contactLabel}`,
       `Доставка: Нова пошта (${deliveryTarget}), оплата доставки на пошті`,
-      "Передплата: менеджер зв'яжеться для проведення мінімальної передплати 200 грн",
+      `Спосіб оплати: ${getSelectedPaymentLabel()}`,
+      paymentComment,
     ].filter(Boolean);
     const warehouseName = state.selectedWarehouse.name || warehouseInput.value;
 
     return {
       locale: window.OKOLO_CHECKOUT_LOCALE || 'uk',
-      payment_type: 'no_prepayment',
-      amount: 0,
+      payment_type: paymentType,
+      amount: paymentType === 'full' ? subtotal : 0,
       cart_total: subtotal,
       cart_token: (state.cart && state.cart.token) || '',
       customer: {
@@ -1297,11 +1321,13 @@
   }
 
   function thankYouUrl(data) {
-    const fallback = data.redirectUrl || '/';
+    const fallback = data.paymentType === 'full' ? FULL_PAYMENT_URL : (data.redirectUrl || '/');
     try {
       const url = new URL(fallback, window.location.origin);
       if (data.shopifyOrderName) url.searchParams.set('order', data.shopifyOrderName);
       if (data.reference) url.searchParams.set('reference', data.reference);
+      if (data.paymentType) url.searchParams.set('payment', data.paymentType);
+      if (data.amount) url.searchParams.set('amount', data.amount);
       return url.toString();
     } catch (error) {
       return fallback;

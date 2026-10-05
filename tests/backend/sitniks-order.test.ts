@@ -300,7 +300,7 @@ describe('Sitniks order mapping', () => {
     expect(String(payload.clientComment)).toContain('Recipient Email: test@example.com');
     expect(String(payload.clientComment)).toContain('Country: Poland');
     expect(String(payload.clientComment)).toContain('Zip code: 00-001');
-    expect(String(payload.clientComment)).toContain('Payment: Monobank');
+    expect(String(payload.clientComment)).toContain('Payment: Повна оплата');
     expect(String(payload.managerComment)).toContain('Повна оплата');
     expect(String(payload.managerComment)).toContain('Тип доставки: закордон');
     expect(String(payload.managerComment)).toContain('Доставка: за кордон');
