@@ -1343,13 +1343,14 @@
     setStatus('Створюємо замовлення...', '');
 
     try {
+      const payload = buildPayload();
       const response = await fetch(`${API_BASE_URL}/api/orders/create-invoice`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
-        body: JSON.stringify(buildPayload()),
+        body: JSON.stringify(payload),
       });
       const data = await response.json().catch(function () {
         return {};
@@ -1358,7 +1359,11 @@
 
       setStatus(data.message || 'Замовлення оформлено. Переходимо далі...', 'success');
       await clearCart();
-      window.location.href = thankYouUrl(data);
+      window.location.href = thankYouUrl({
+        ...data,
+        paymentType: payload.payment_type || data.paymentType,
+        amount: payload.amount || data.amount,
+      });
     } catch (error) {
       setStatus(error.message || 'Не вдалося оформити замовлення. Спробуйте ще раз.', 'error');
       state.isSubmitting = false;
