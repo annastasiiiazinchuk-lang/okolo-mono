@@ -829,7 +829,7 @@
 <script>
 (function () {
   const API_BASE_URL = 'https://okolo-mono.onrender.com';
-  const FULL_PAYMENT_URL = `${API_BASE_URL}/okolo-payment`;
+  const FULL_PAYMENT_URL = window.OKOLO_FULL_PAYMENT_URL || '/pages/thank-you-full';
   const NP_REQUEST_TIMEOUT_MS = 6500;
   const TRACKING_STORAGE_KEY = 'okolo_tracking';
   const TRACKING_PARAMS = [
