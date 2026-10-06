@@ -1,7 +1,7 @@
 import { env } from '../../config/env';
 import { normalizeSearchText } from '../../utils/format';
 
-const NOVA_POSHTA_TIMEOUT_MS = 12000;
+const NOVA_POSHTA_TIMEOUT_MS = 6500;
 const NOVA_POSHTA_CACHE_TTL_MS = 30 * 60 * 1000;
 
 const cache = new Map<string, { data: unknown[]; createdAt: number }>();
@@ -12,6 +12,7 @@ export const POPULAR_NP_CITIES = [
   { ref: 'db5c88d0-391c-11dd-90d9-001a92567626', name: 'Одеса', area: 'Одеська', settlementType: 'місто' },
   { ref: 'db5c88f0-391c-11dd-90d9-001a92567626', name: 'Дніпро', area: 'Дніпропетровська', settlementType: 'місто' },
   { ref: 'db5c88e0-391c-11dd-90d9-001a92567626', name: 'Харків', area: 'Харківська', settlementType: 'місто' },
+  { ref: 'db5c88d7-391c-11dd-90d9-001a92567626', name: 'Бровари', area: 'Київська', settlementType: 'місто' },
 ];
 
 export function popularCitiesForQuery(query: string) {

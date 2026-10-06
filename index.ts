@@ -1,5 +1,5 @@
 import { env } from './lib/config/env';
-import { CORS_HEADERS, json, text } from './lib/http/responses';
+import { CORS_HEADERS, html, json, text } from './lib/http/responses';
 import { handleFrontendDebugLog, handleNovaPoshtaDebugPage, handleShopifyOrderDebug } from './lib/routes/debug';
 import { handleHealth, handleHealthDb } from './lib/routes/health';
 import { handleMonobankPartsReject } from './lib/routes/monobank-parts';
@@ -20,6 +20,10 @@ async function route(request: Request): Promise<Response> {
 
   if (method === 'GET' && pathname === '/') {
     return text('okolo-mono server');
+  }
+  if (method === 'GET' && pathname === '/okolo-payment') {
+    const page = await Bun.file('OKOLO_FULL_PAYMENT_READY_TO_PASTE.html').text();
+    return html(page);
   }
   if (method === 'GET' && pathname === '/api/health') {
     return handleHealth();

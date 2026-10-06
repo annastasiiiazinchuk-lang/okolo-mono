@@ -829,7 +829,8 @@
 <script>
 (function () {
   const API_BASE_URL = 'https://okolo-mono.onrender.com';
-  const FULL_PAYMENT_URL = window.OKOLO_FULL_PAYMENT_URL || '/pages/okolo-payment';
+  const FULL_PAYMENT_URL = `${API_BASE_URL}/okolo-payment`;
+  const NP_REQUEST_TIMEOUT_MS = 6500;
   const TRACKING_STORAGE_KEY = 'okolo_tracking';
   const TRACKING_PARAMS = [
     'utm_source',
@@ -844,6 +845,14 @@
     'fbclid',
     'ttclid',
     'msclkid',
+  ];
+  const POPULAR_NP_CITIES = [
+    { ref: '8d5a980d-391c-11dd-90d9-001a92567626', name: 'Київ', area: 'Київська', settlementType: 'місто' },
+    { ref: 'db5c88d7-391c-11dd-90d9-001a92567626', name: 'Бровари', area: 'Київська', settlementType: 'місто' },
+    { ref: 'db5c88f5-391c-11dd-90d9-001a92567626', name: 'Львів', area: 'Львівська', settlementType: 'місто' },
+    { ref: 'db5c88d0-391c-11dd-90d9-001a92567626', name: 'Одеса', area: 'Одеська', settlementType: 'місто' },
+    { ref: 'db5c88f0-391c-11dd-90d9-001a92567626', name: 'Дніпро', area: 'Дніпропетровська', settlementType: 'місто' },
+    { ref: 'db5c88e0-391c-11dd-90d9-001a92567626', name: 'Харків', area: 'Харківська', settlementType: 'місто' },
   ];
 
   const form = document.getElementById('okoloOrderForm');
@@ -873,6 +882,8 @@
     warehouseRequestId: 0,
     isSubmitting: false,
   };
+  const cityCache = new Map();
+  const warehouseCache = new Map();
 
   if (!form || !submitButton) return;
 
@@ -887,6 +898,15 @@
 
   function normalizeText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function normalizeLookup(value) {
+    return normalizeText(value)
+      .toLocaleLowerCase('uk-UA')
+      .replace(/[№#]/g, ' ')
+      .replace(/[.,()"]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   function normalizePhone(value) {
@@ -1032,15 +1052,30 @@
     };
   }
 
-  async function apiGet(path) {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      headers: { Accept: 'application/json' },
-    });
-    const data = await response.json().catch(function () {
-      return {};
-    });
-    if (!response.ok) throw new Error(data.message || data.error || 'Помилка запиту');
-    return data;
+  async function apiGet(path, timeoutMs) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(function () {
+      controller.abort();
+    }, timeoutMs || NP_REQUEST_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}${path}`, {
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
+      });
+      const data = await response.json().catch(function () {
+        return {};
+      });
+      if (!response.ok) throw new Error(data.message || data.error || 'Помилка запиту');
+      return data;
+    } catch (error) {
+      if (error && error.name === 'AbortError') {
+        throw new Error('Нова пошта відповідає занадто довго');
+      }
+      throw error;
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
   }
 
   function hideSuggestions(container) {
@@ -1080,6 +1115,39 @@
     const name = String(warehouse?.name || '');
     const isPostomat = /поштомат/i.test(name);
     return getSelectedDeliveryMethod() === 'postomat' ? isPostomat : !isPostomat;
+  }
+
+  function popularCitiesForQuery(query) {
+    const lookup = normalizeLookup(query);
+    if (lookup.length < 2) return [];
+
+    return POPULAR_NP_CITIES.filter(function (city) {
+      const cityName = normalizeLookup(city.name);
+      const cityLabel = normalizeLookup([city.name, city.area].filter(Boolean).join(' '));
+      return cityName.startsWith(lookup) || cityLabel.includes(lookup);
+    });
+  }
+
+  function mergeCities(primary, secondary) {
+    const seen = new Set();
+    return [].concat(primary || [], secondary || []).filter(function (city) {
+      const key = city.ref || `${city.name || ''}|${city.area || ''}`;
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function cityCacheKey(query) {
+    return normalizeLookup(query);
+  }
+
+  function warehouseCacheKey(query) {
+    return [
+      state.selectedCity && (state.selectedCity.ref || state.selectedCity.name),
+      getSelectedDeliveryMethod(),
+      normalizeLookup(query),
+    ].filter(Boolean).join('|');
   }
 
   function renderCitySuggestions(cities) {
@@ -1132,14 +1200,29 @@
     }
 
     const requestId = ++state.cityRequestId;
-    renderSuggestionMessage(citySuggestions, 'Шукаємо місто...');
+    const cacheKey = cityCacheKey(query);
+    const cachedCities = cityCache.get(cacheKey);
+    if (cachedCities) {
+      renderCitySuggestions(cachedCities);
+      return;
+    }
+
+    const localCities = popularCitiesForQuery(query);
+    if (localCities.length) {
+      renderCitySuggestions(localCities);
+    } else {
+      renderSuggestionMessage(citySuggestions, 'Шукаємо місто...');
+    }
+
     try {
       const data = await apiGet(`/api/np/cities?query=${encodeURIComponent(query)}&rid=okolo-city-${Date.now()}`);
       if (requestId !== state.cityRequestId) return;
-      renderCitySuggestions(Array.isArray(data.cities) ? data.cities : []);
+      const cities = mergeCities(localCities, Array.isArray(data.cities) ? data.cities : []);
+      cityCache.set(cacheKey, cities);
+      renderCitySuggestions(cities);
     } catch (error) {
       if (requestId !== state.cityRequestId) return;
-      renderSuggestionMessage(citySuggestions, 'Не вдалося завантажити міста');
+      if (!localCities.length) renderSuggestionMessage(citySuggestions, 'Не вдалося завантажити міста');
     }
   }, 260);
 
@@ -1149,6 +1232,13 @@
     const targetLabel = getDeliveryTargetLabel();
     const apiQuery = getSelectedDeliveryMethod() === 'postomat' && !query ? 'поштомат' : query;
     const requestId = ++state.warehouseRequestId;
+    const cacheKey = warehouseCacheKey(apiQuery);
+    const cachedWarehouses = warehouseCache.get(cacheKey);
+    if (cachedWarehouses) {
+      renderWarehouseSuggestions(cachedWarehouses);
+      return;
+    }
+
     renderSuggestionMessage(warehouseSuggestions, `Шукаємо ${targetLabel.toLocaleLowerCase('uk-UA')}...`);
 
     try {
@@ -1160,7 +1250,9 @@
       });
       const data = await apiGet(`/api/np/warehouses?${params.toString()}`);
       if (requestId !== state.warehouseRequestId) return;
-      renderWarehouseSuggestions(Array.isArray(data.warehouses) ? data.warehouses : []);
+      const warehouses = Array.isArray(data.warehouses) ? data.warehouses : [];
+      warehouseCache.set(cacheKey, warehouses);
+      renderWarehouseSuggestions(warehouses);
     } catch (error) {
       if (requestId !== state.warehouseRequestId) return;
       renderSuggestionMessage(warehouseSuggestions, `Не вдалося завантажити ${targetLabel.toLocaleLowerCase('uk-UA')}`);
@@ -1185,6 +1277,51 @@
     warehouseInput.value = warehouse.name || '';
     clearFieldError(warehouseInput);
     hideSuggestions(warehouseSuggestions);
+  }
+
+  function syncTypedCitySelection() {
+    if (state.selectedCity) return true;
+    const value = normalizeLookup(cityInput.value);
+    const items = Array.isArray(citySuggestions._items) ? citySuggestions._items : [];
+    if (!value || !items.length) return false;
+
+    const match = items.find(function (city) {
+      const name = normalizeLookup(city.name);
+      const label = normalizeLookup([city.name, city.area].filter(Boolean).join(', '));
+      return value === name || value === label;
+    });
+
+    if (!match) return false;
+    selectCity(match);
+    return true;
+  }
+
+  function syncTypedWarehouseSelection() {
+    if (state.selectedWarehouse) return true;
+    const value = normalizeText(warehouseInput.value);
+    const lookup = normalizeLookup(value);
+    const digits = value.replace(/\D/g, '');
+    const items = (Array.isArray(warehouseSuggestions._items) ? warehouseSuggestions._items : [])
+      .filter(warehouseMatchesDeliveryMethod);
+
+    if (!lookup || !items.length) return false;
+
+    const exactByNumber = digits
+      ? items.find(function (warehouse) {
+        return String(warehouse.number || '').trim() === digits;
+      })
+      : null;
+    const exactByName = items.find(function (warehouse) {
+      return normalizeLookup(warehouse.name) === lookup;
+    });
+    const partialMatches = items.filter(function (warehouse) {
+      return normalizeLookup(warehouse.name).includes(lookup);
+    });
+    const match = exactByNumber || exactByName || (partialMatches.length === 1 ? partialMatches[0] : null);
+
+    if (!match) return false;
+    selectWarehouse(match);
+    return true;
   }
 
   function cleanVariantTitle(item) {
@@ -1458,6 +1595,8 @@
     [fullName, phone, email, cityInput, warehouseInput].forEach(clearFieldError);
     setConsentError('');
     setStatus('', '');
+    syncTypedCitySelection();
+    if (state.selectedCity) syncTypedWarehouseSelection();
 
     if (!normalizeText(fullName.value)) {
       markInvalid(fullName, "Введіть ім'я та прізвище");
@@ -1635,8 +1774,17 @@
   });
 
   cityInput.addEventListener('input', function () {
+    state.selectedCity = null;
+    state.selectedWarehouse = null;
+    warehouseInput.value = '';
+    warehouseInput.disabled = true;
+    hideSuggestions(warehouseSuggestions);
     clearFieldError(cityInput);
     searchCities();
+  });
+
+  cityInput.addEventListener('blur', function () {
+    window.setTimeout(syncTypedCitySelection, 150);
   });
 
   warehouseInput.addEventListener('input', function () {
@@ -1647,6 +1795,10 @@
 
   warehouseInput.addEventListener('focus', function () {
     if (state.selectedCity) searchWarehouses();
+  });
+
+  warehouseInput.addEventListener('blur', function () {
+    window.setTimeout(syncTypedWarehouseSelection, 150);
   });
 
   deliveryMethodInputs.forEach(function (input) {
