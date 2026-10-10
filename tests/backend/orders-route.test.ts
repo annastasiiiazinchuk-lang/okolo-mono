@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test';
-import { validateCheckoutRequiredFields } from '../../lib/routes/orders';
+import {
+  buildManualPurchasePayment,
+  buildManualPurchaseWebhookBody,
+  validateCheckoutRequiredFields,
+} from '../../lib/routes/orders';
 import type { CheckoutPayload } from '../../lib/types/checkout';
 
 const validPayload: CheckoutPayload = {
@@ -35,8 +39,14 @@ const validPayload: CheckoutPayload = {
   personal_data_consent: true,
   tracking: {
     page_url: 'https://okolo-ua.com/pages/checkkout',
+    ga_client_id: '123456789.1788445000',
+    ga_session_id: '1788445000',
+    gclid: 'test-gclid-123',
   },
-  utm: {},
+  utm: {
+    utm_source: 'google',
+    utm_medium: 'cpc',
+  },
 };
 
 describe('orders route validation', () => {
@@ -81,5 +91,36 @@ describe('orders route validation', () => {
         warehouse: '',
       },
     })).toContain('поштомат Нової пошти');
+  });
+
+  test('builds manual-order purchase metadata with tracking data', () => {
+    const payment = buildManualPurchasePayment(validPayload, { id: 7243745919168, name: '#1486' }, 0);
+    const webhookBody = buildManualPurchaseWebhookBody(payment);
+
+    expect(payment).toMatchObject({
+      shopifyOrderId: 7243745919168,
+      shopifyOrderName: '#1486',
+      reference: 'shopify-7243745919168',
+      amount: 0,
+      paymentType: 'no_prepayment',
+      cartTotal: 2590,
+      tracking: {
+        utm_source: 'google',
+        utm_medium: 'cpc',
+        ga_client_id: '123456789.1788445000',
+        ga_session_id: '1788445000',
+        gclid: 'test-gclid-123',
+      },
+    });
+    expect(webhookBody).toMatchObject({
+      invoiceId: 'shopify-7243745919168',
+      status: 'success',
+      reference: 'shopify-7243745919168',
+      amount: 259000,
+      finalAmount: 259000,
+      paymentInfo: {
+        source: 'manual_checkout',
+      },
+    });
   });
 });

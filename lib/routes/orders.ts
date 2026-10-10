@@ -2,10 +2,13 @@ import { env } from '../config/env';
 import { json } from '../http/responses';
 import {
   createShopifyOrder,
+  getCartTotal,
   getPaymentAmount,
 } from '../services/shopify/shopify-order';
 import { sendSitniksOrder } from '../services/sitniks/sitniks-order';
-import { checkoutPayloadSchema, type CheckoutPayload } from '../types/checkout';
+import { sendServerSidePurchaseEvents } from '../services/tracking/purchase';
+import { checkoutPayloadSchema, type CheckoutPayload, type StoredPaymentMetadata } from '../types/checkout';
+import type { MonobankWebhookBody } from '../types/monobank';
 
 function text(value: unknown): string {
   return String(value ?? '').trim();
@@ -13,6 +16,46 @@ function text(value: unknown): string {
 
 function phoneDigits(value: unknown): string {
   return text(value).replace(/\D/g, '');
+}
+
+export function buildManualPurchasePayment(
+  body: CheckoutPayload,
+  shopifyOrder: { id: number; name?: string },
+  amount: number,
+): StoredPaymentMetadata {
+  const tracking = {
+    ...(body.utm || {}),
+    ...(body.tracking || {}),
+  };
+  const cartTotal = getCartTotal(body) || amount;
+
+  return {
+    shopifyOrderId: shopifyOrder.id,
+    shopifyOrderName: shopifyOrder.name,
+    reference: `shopify-${shopifyOrder.id}`,
+    amount,
+    paymentType: body.payment_type,
+    customer: body.customer,
+    tracking,
+    cartTotal,
+    goods: body.goods,
+  };
+}
+
+export function buildManualPurchaseWebhookBody(payment: StoredPaymentMetadata): MonobankWebhookBody {
+  const eventAmount = Math.round((payment.cartTotal || payment.amount || 0) * 100);
+
+  return {
+    invoiceId: payment.reference,
+    status: 'success',
+    reference: payment.reference,
+    amount: eventAmount,
+    finalAmount: eventAmount,
+    modifiedDate: new Date().toISOString(),
+    paymentInfo: {
+      source: 'manual_checkout',
+    },
+  };
 }
 
 export function validateCheckoutRequiredFields(body: CheckoutPayload): string[] {
@@ -109,6 +152,11 @@ export async function handleCreateInvoice(request: Request): Promise<Response> {
     const shopifyOrder = await createShopifyOrder(body, amount);
     void sendSitniksOrder(body, shopifyOrder).catch((error) => {
       console.error('[Sitniks] Failed to send manual-payment order:', error);
+    });
+    const purchasePayment = buildManualPurchasePayment(body, shopifyOrder, amount);
+    const purchaseWebhookBody = buildManualPurchaseWebhookBody(purchasePayment);
+    void sendServerSidePurchaseEvents(purchasePayment, purchaseWebhookBody).catch((error) => {
+      console.error('[Tracking] Failed to send manual-payment purchase events:', error);
     });
 
     const isFullPayment = body.payment_type === 'full';
