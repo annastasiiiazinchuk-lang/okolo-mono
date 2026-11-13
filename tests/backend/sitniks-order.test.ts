@@ -73,6 +73,10 @@ describe('Sitniks order mapping', () => {
       'Телефон: +380682345729',
       'Payment: Накладений платіж',
       'Доставка: Київ, відділення 12',
+      'ЗВІДКИ КЛІЄНТ',
+      'Facebook',
+      'UTM source: facebook',
+      'UTM campaign: summer',
     ].join('\n'));
     expect(payload.utm).toBeUndefined();
     expect(String(payload.managerComment)).toContain('Shopify order: #1001');
@@ -91,7 +95,7 @@ describe('Sitniks order mapping', () => {
     expect(payload.payment).toBeUndefined();
   });
 
-  test('does not send UTM or customer source to Sitniks', () => {
+  test('keeps selected UTM in the CRM comment without sending technical metadata', () => {
     const payload = buildSitniksOrderPayload({
       ...basePayload,
       comment: [
@@ -115,6 +119,11 @@ describe('Sitniks order mapping', () => {
       'Instagram/Telegram: ТЕСТ',
       "Як зв'язатись: Напишіть мені",
       'Доставка: Київ, відділення 12',
+      'ЗВІДКИ КЛІЄНТ',
+      'Instagram',
+      'UTM source: google',
+      'UTM medium: product_sync',
+      'UTM campaign: sag_organic',
     ].join('\n'));
     expect(String(payload.managerComment)).not.toContain('ЗВІДКИ КЛІЄНТ');
     expect(String(payload.managerComment)).not.toContain('UTM source: google');
@@ -353,6 +362,10 @@ describe('Sitniks order mapping', () => {
       'Телефон: +380682345729',
       'Payment: Повна оплата',
       'Доставка: Poland, Warsaw, Main street 1, 2, 00-001',
+      'ЗВІДКИ КЛІЄНТ',
+      'Facebook',
+      'UTM source: facebook',
+      'UTM campaign: summer',
     ].join('\n'));
     expect(String(payload.managerComment)).toContain('Повна оплата');
     expect(String(payload.managerComment)).toContain('Тип доставки: закордон');

@@ -273,13 +273,14 @@ function buildKeyCrmDelivery(body: CheckoutPayload): string {
     .join(', ');
 }
 
-/** The only customer-facing text sent to the KeyCRM comment field. */
+/** The only selected text sent to the KeyCRM comment field. */
 export function buildKeyCrmComment(body: CheckoutPayload): string {
   const customer = body.customer || {};
   const phone = normalizeShopifyPhone(customer.phone);
   const instagram = checkoutCommentValue(body, /^Instagram\/Telegram\s*:/iu);
   const contactMethod = checkoutCommentValue(body, /^Як зв['’ʼ]язатись\s*:/iu);
   const delivery = buildKeyCrmDelivery(body);
+  const customerSource = buildCustomerSourceComment(body);
 
   return [
     customerFullName(body) ? `Імʼя, прізвище: ${customerFullName(body)}` : '',
@@ -288,6 +289,7 @@ export function buildKeyCrmComment(body: CheckoutPayload): string {
     instagram ? `Instagram/Telegram: ${instagram}` : '',
     contactMethod ? `Як зв'язатись: ${contactMethod}` : '',
     delivery ? `Доставка: ${delivery}` : '',
+    customerSource,
   ].filter(Boolean).join('\n');
 }
 
@@ -355,6 +357,10 @@ export function buildCustomerSourceComment(body: CheckoutPayload): string {
     ...(body.utm || {}),
     ...(body.tracking || {}),
   };
+  const gclid = trackingValue(tracking, 'tracking_gclid') || trackingValue(tracking, 'gclid');
+  const fbp = trackingValue(tracking, 'tracking_fbp')
+    || trackingValue(tracking, 'fbp')
+    || trackingValue(tracking, '_fbp');
   const sourceLabel = detectTrafficSourceLabel(tracking);
   const lines = [
     sourceLabel,
@@ -363,6 +369,8 @@ export function buildCustomerSourceComment(body: CheckoutPayload): string {
     humanTrackingValue(trackingValue(tracking, 'utm_campaign')) ? `UTM campaign: ${humanTrackingValue(trackingValue(tracking, 'utm_campaign'))}` : '',
     humanTrackingValue(trackingValue(tracking, 'utm_content')) ? `UTM content: ${humanTrackingValue(trackingValue(tracking, 'utm_content'))}` : '',
     humanTrackingValue(trackingValue(tracking, 'utm_term')) ? `UTM term: ${humanTrackingValue(trackingValue(tracking, 'utm_term'))}` : '',
+    gclid ? `tracking_gclid: ${gclid}` : '',
+    fbp ? `tracking_fbp: ${fbp}` : '',
   ].filter(Boolean);
 
   return lines.length ? ['ЗВІДКИ КЛІЄНТ', ...lines].join('\n') : '';

@@ -114,6 +114,15 @@ describe('Shopify order mapping', () => {
       'Телефон: +380682345729',
       'Payment: Повна оплата',
       'Доставка: Київ, відділення 12',
+      'ЗВІДКИ КЛІЄНТ',
+      'Instagram',
+      'UTM source: ig',
+      'UTM medium: social',
+      'UTM campaign: fall',
+      'UTM content: link_in_bio',
+      'UTM term: midi',
+      'tracking_gclid: google-click-id',
+      'tracking_fbp: fb.1.17887050546561.847850575329279795',
     ].join('\n'));
     expect(payload.order.note_attributes).toEqual([]);
     const metafields = buildShopifyOrderMetafields({
@@ -155,6 +164,7 @@ describe('Shopify order mapping', () => {
       tracking: {
         traffic_source: 'Google',
         gclid: 'google-click-id',
+        fbp: 'fb.1.17887050546561.847850575329279795',
       },
     }, getPaymentAmount(basePayload));
     expect(payload.order.note).toBe([
@@ -164,6 +174,13 @@ describe('Shopify order mapping', () => {
       'Instagram/Telegram: ТЕСТ',
       'Як зв\'язатись: Напишіть мені',
       'Доставка: Київ, відділення 12',
+      'ЗВІДКИ КЛІЄНТ',
+      'Instagram',
+      'UTM source: google',
+      'UTM medium: product_sync',
+      'UTM campaign: sag_organic',
+      'tracking_gclid: google-click-id',
+      'tracking_fbp: fb.1.17887050546561.847850575329279795',
     ].join('\n'));
     expect(payload.order.note_attributes).toEqual([]);
   });
