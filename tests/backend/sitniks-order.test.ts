@@ -74,7 +74,7 @@ describe('Sitniks order mapping', () => {
       'Payment: Накладений платіж',
       'Доставка: Київ, відділення 12',
     ].join('\n'));
-    expect(payload.utm).toEqual({ source: 'facebook', campaign: 'summer' });
+    expect(payload.utm).toBeUndefined();
     expect(String(payload.managerComment)).toContain('Shopify order: #1001');
     expect(String(payload.managerComment)).toContain('Передплата 300 грн');
     expect(String(payload.managerComment)).toContain('Сума товарів: 1200 грн');
@@ -91,7 +91,7 @@ describe('Sitniks order mapping', () => {
     expect(payload.payment).toBeUndefined();
   });
 
-  test('sends a human customer source for Instagram product sync orders', () => {
+  test('does not send UTM or customer source to Sitniks', () => {
     const payload = buildSitniksOrderPayload({
       ...basePayload,
       comment: [
@@ -116,16 +116,11 @@ describe('Sitniks order mapping', () => {
       "Як зв'язатись: Напишіть мені",
       'Доставка: Київ, відділення 12',
     ].join('\n'));
-    expect(String(payload.managerComment)).toContain('ЗВІДКИ КЛІЄНТ');
-    expect(String(payload.managerComment)).toContain('Instagram');
-    expect(String(payload.managerComment)).toContain('UTM source: google');
-    expect(String(payload.managerComment)).toContain('UTM medium: product_sync');
-    expect(String(payload.managerComment)).toContain('UTM campaign: sag_organic');
-    expect(payload.utm).toEqual({
-      source: 'Instagram',
-      medium: 'product_sync',
-      campaign: 'sag_organic',
-    });
+    expect(String(payload.managerComment)).not.toContain('ЗВІДКИ КЛІЄНТ');
+    expect(String(payload.managerComment)).not.toContain('UTM source: google');
+    expect(String(payload.managerComment)).not.toContain('UTM medium: product_sync');
+    expect(String(payload.managerComment)).not.toContain('UTM campaign: sag_organic');
+    expect(payload.utm).toBeUndefined();
   });
 
   test('does not send numeric UTM source values to Sitniks', () => {
@@ -140,11 +135,7 @@ describe('Sitniks order mapping', () => {
     }, { id: 1303, name: '#1303' });
 
     expect(String(payload.managerComment)).not.toContain('431612592129');
-    expect(payload.utm).toEqual({
-      source: 'Instagram',
-      medium: 'product_sync',
-      campaign: 'sag_organic',
-    });
+    expect(payload.utm).toBeUndefined();
   });
 
   test('builds product rows by title without SKU', () => {

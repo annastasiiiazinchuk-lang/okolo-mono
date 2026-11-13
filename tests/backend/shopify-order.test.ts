@@ -4,6 +4,7 @@ import {
   buildPaidShopifyOrderPayload,
   buildShippingAddress,
   buildKeyCrmComment,
+  buildShopifyOrderMetafields,
   buildShopifyOrderPayload,
   getPaymentAmount,
   getShippingPrice,
@@ -86,13 +87,7 @@ describe('Shopify order mapping', () => {
       'Payment: Повна оплата',
       'Доставка: Київ, відділення 12',
     ].join('\n'));
-    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
-      { name: 'payment_type', value: 'full_payment' },
-      { name: 'shipping_type', value: 'ukraine' },
-      { name: 'nova_poshta_city', value: 'Київ' },
-      { name: 'nova_poshta_warehouse', value: 'Відділення №12' },
-      { name: 'Comment', value: expect.stringContaining('Доставка: Київ, відділення 12') },
-    ]));
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('order additional details include UTM marks in Checkly-compatible field', () => {
@@ -120,12 +115,24 @@ describe('Shopify order mapping', () => {
       'Payment: Повна оплата',
       'Доставка: Київ, відділення 12',
     ].join('\n'));
-    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
-      { name: 'UTM', value: expect.stringContaining('utm_medium: social') },
-      { name: 'tracking_utm_source', value: 'ig' },
-      { name: 'tracking_utm_campaign', value: 'fall' },
-      { name: 'tracking_gclid', value: 'google-click-id' },
-    ]));
+    expect(payload.order.note_attributes).toEqual([]);
+    const metafields = buildShopifyOrderMetafields({
+      ...basePayload,
+      utm: { utm_source: 'ig', utm_medium: 'social' },
+      tracking: {
+        utm_campaign: 'fall',
+        utm_content: 'link_in_bio',
+        gclid: 'google-click-id',
+      },
+    }, getPaymentAmount(basePayload));
+    const utmMetafield = metafields.find((metafield) => metafield.key === 'utm');
+    expect(utmMetafield).toBeDefined();
+    expect(JSON.parse(utmMetafield!.value)).toMatchObject({
+      utm_source: 'ig',
+      utm_medium: 'social',
+      utm_campaign: 'fall',
+      gclid: 'google-click-id',
+    });
   });
 
   test('formats Instagram product sync source with separate UTM lines', () => {
@@ -158,10 +165,7 @@ describe('Shopify order mapping', () => {
       'Як зв\'язатись: Напишіть мені',
       'Доставка: Київ, відділення 12',
     ].join('\n'));
-    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
-      { name: 'ЗВІДКИ КЛІЄНТ', value: expect.stringContaining('Instagram') },
-      { name: 'UTM', value: expect.stringContaining('utm_campaign: sag_organic') },
-    ]));
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('builds only the selected KeyCRM comment fields', () => {
@@ -170,7 +174,7 @@ describe('Shopify order mapping', () => {
       shipping: {
         ...basePayload.shipping,
         city: 'Харків',
-        warehouse: 'Відділення №107',
+        warehouse: 'Відділення №107 (до 30 кг на одне місце): вул. Полтавський шлях, 115',
       },
       comment: [
         'Мій коментар',
@@ -194,11 +198,7 @@ describe('Shopify order mapping', () => {
     ].join('\n'));
     const payload = buildShopifyOrderPayload(body, getPaymentAmount(body));
     expect(payload.order.note).toBe(buildKeyCrmComment(body));
-    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
-      { name: 'Comment', value: expect.stringContaining('Доставка: Харків, відділення 107') },
-      { name: 'nova_poshta_city', value: 'Харків' },
-      { name: 'nova_poshta_warehouse', value: 'Відділення №107' },
-    ]));
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('custom checkout orders do not add Shopify taxes', () => {
@@ -257,11 +257,7 @@ describe('Shopify order mapping', () => {
       'Payment: Повна оплата',
       'Доставка: Poland, Warsaw, Main street 1, 2, 00-001',
     ].join('\n'));
-    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
-      { name: 'delivery_type', value: 'international' },
-      { name: 'delivery_country', value: 'Poland' },
-      { name: 'delivery_city', value: 'Warsaw' },
-    ]));
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('prepayment amount is fixed at 300', () => {
@@ -285,7 +281,7 @@ describe('Shopify order mapping', () => {
       'Payment: Накладений платіж',
       'Доставка: Київ, відділення 12',
     ].join('\n'));
-    expect(payload.order.note_attributes).not.toEqual([]);
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('prepayment order starts pending with not_paid_300 tag and no discount before payment', () => {
@@ -298,7 +294,7 @@ describe('Shopify order mapping', () => {
     expect(payload.order.discount_codes).toBeUndefined();
     expect(lineItems[0].taxable).toBe(false);
     expect(lineItems[0].tax_lines).toEqual([]);
-    expect(payload.order.note_attributes).not.toEqual([]);
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('full payment order created after Monobank success is paid immediately', () => {
@@ -312,7 +308,7 @@ describe('Shopify order mapping', () => {
       'Payment: Повна оплата',
       'Доставка: Київ, відділення 12',
     ].join('\n'));
-    expect(payload.order.note_attributes).not.toEqual([]);
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('prepayment order created after Monobank success is partially paid with Checkly fields', () => {
@@ -327,7 +323,7 @@ describe('Shopify order mapping', () => {
       'Payment: Накладений платіж',
       'Доставка: Київ, відділення 12',
     ].join('\n'));
-    expect(payload.order.note_attributes).not.toEqual([]);
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('international order created after payment keeps the clean KeyCRM comment', () => {
@@ -356,7 +352,7 @@ describe('Shopify order mapping', () => {
       'Payment: Повна оплата',
       'Доставка: Spain, Tarragona, Calle L. Van Beethoven, 7A, 43007',
     ].join('\n'));
-    expect(payload.order.note_attributes).not.toEqual([]);
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('prepayment after payment marks Shopify as partially paid and stores paid amount', () => {
@@ -370,7 +366,7 @@ describe('Shopify order mapping', () => {
     expect(update.tags).toBe('manual, prepayment_300_paid');
     expect(String(update.note)).toBe('');
     expect(update.discount_codes).toBeUndefined();
-    expect(update.note_attributes).not.toEqual([]);
+    expect(update.note_attributes).toEqual([]);
   });
 
   test('full payment after payment sets paid status and no prepayment tag', () => {
@@ -392,14 +388,14 @@ describe('Shopify order mapping', () => {
     expect(String(update.note)).toContain('Передзвоніть клієнту');
     expect(String(update.note)).not.toContain('CRM оплата:');
     expect(String(update.note)).not.toContain('Сплата: 0');
-    expect(update.note_attributes).not.toEqual([]);
+    expect(update.note_attributes).toEqual([]);
   });
 
   test('installments order is marked separately and becomes paid after approval', () => {
     const payload = buildShopifyOrderPayload({ ...basePayload, payment_type: 'installments' }, 1200);
     expect(payload.order.financial_status).toBe('pending');
     expect(payload.order.tags).toBe('monobank_parts_unpaid');
-    expect(payload.order.note_attributes).not.toEqual([]);
+    expect(payload.order.note_attributes).toEqual([]);
 
     const update = buildOrderUpdateAfterPayment(123, 1200, 'parts-order-1', 'installments', [
       { name: 'payment_type', value: 'monobank_parts' },
@@ -407,7 +403,7 @@ describe('Shopify order mapping', () => {
     ]);
     expect(update.financial_status).toBe('paid');
     expect(update.tags).toBe('monobank_parts_paid');
-    expect(update.note_attributes).not.toEqual([]);
+    expect(update.note_attributes).toEqual([]);
   });
 
   test('Nova Poshta branch maps city and branch separately', () => {
@@ -431,9 +427,7 @@ describe('Shopify order mapping', () => {
 
     expect(getShippingPrice(novaPoshtaPayload)).toBe(0);
     expect(payload.order.shipping_lines).toBeUndefined();
-    expect(payload.order.note_attributes).not.toEqual(expect.arrayContaining([
-      { name: 'delivery_price', value: '80' },
-    ]));
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('Nova Poshta address delivery maps street/house separately from apartment', () => {

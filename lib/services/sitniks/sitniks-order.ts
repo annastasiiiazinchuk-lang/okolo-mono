@@ -5,7 +5,6 @@ import type { MonobankWebhookBody } from '../../types/monobank';
 import type { ShopifyOrder } from '../../types/shopify';
 import { asNumber, asString, parseJsonObject } from '../../utils/format';
 import {
-  buildCustomerSourceComment,
   buildKeyCrmComment,
   buildInternationalCheckoutComment,
   getCartTotal,
@@ -462,36 +461,6 @@ export function buildSitniksNpDelivery(body: CheckoutPayload) {
   };
 }
 
-function buildUtm(body: CheckoutPayload) {
-  const tracking = {
-    ...(body.utm || {}),
-    ...(body.tracking || {}),
-  };
-  const humanUtmValue = (value: unknown) => {
-    const text = asString(value);
-    if (!text || /^[\d\s._-]+$/.test(text) || text.length > 120) return '';
-    return text;
-  };
-  const isInstagramProductSync = /product_sync/i.test(asString(tracking.utm_medium))
-    && /(^|[_-])sag([_-]|$)|instagram|ig/i.test(asString(tracking.utm_campaign));
-  const detectedSource = isInstagramProductSync
-    ? 'Instagram'
-    : humanUtmValue(tracking.traffic_source)
-      || humanUtmValue(tracking.utm_source)
-      || (asString(tracking.gclid) || asString(tracking.gbraid) || asString(tracking.wbraid) ? 'Google' : '')
-      || (asString(tracking.fbclid) || asString(tracking.fbc) ? 'Facebook' : '')
-      || (asString(tracking.ttclid) ? 'TikTok' : '');
-  const utm = {
-    source: detectedSource,
-    medium: humanUtmValue(tracking.utm_medium),
-    campaign: humanUtmValue(tracking.utm_campaign),
-    content: humanUtmValue(tracking.utm_content),
-    term: humanUtmValue(tracking.utm_term),
-  };
-
-  return Object.fromEntries(Object.entries(utm).filter(([, value]) => value));
-}
-
 export function buildSitniksOrderPayload(
   body: CheckoutPayload,
   shopifyOrder: Pick<ShopifyOrder, 'id' | 'name'>,
@@ -502,7 +471,6 @@ export function buildSitniksOrderPayload(
   const paymentType = getSitniksPaymentLabel(body.payment_type);
   const goodsComment = buildGoodsComment(body);
   const deliveryComment = buildDeliveryComment(body);
-  const customerSourceComment = buildCustomerSourceComment(body);
   const clientComment = buildKeyCrmComment(body);
   const managerComment = [
     `Shopify order: ${shopifyOrder.name || shopifyOrder.id}`,
@@ -516,7 +484,6 @@ export function buildSitniksOrderPayload(
     }),
     goodsComment ? `Товари:\n${goodsComment}` : '',
     deliveryComment,
-    customerSourceComment,
   ].filter(Boolean).join('\n');
 
   const payload: Record<string, unknown> = {
@@ -530,8 +497,6 @@ export function buildSitniksOrderPayload(
     managerComment,
   };
 
-  const utm = buildUtm(body);
-  if (Object.keys(utm).length > 0) payload.utm = utm;
   if (env.sitniksStatusId > 0) payload.statusId = env.sitniksStatusId;
   if (env.sitniksSalesChannelId > 0) payload.salesChannelId = env.sitniksSalesChannelId;
   const payment = buildSitniksPayment(body);

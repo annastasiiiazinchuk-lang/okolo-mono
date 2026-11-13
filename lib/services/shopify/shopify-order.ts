@@ -233,9 +233,11 @@ function checkoutCommentValue(body: CheckoutPayload, label: RegExp): string {
 
 function formatNovaPoshtaPoint(deliveryMethod: string, warehouse: string): string {
   const label = deliveryMethod === 'postomat' ? 'поштомат' : 'відділення';
-  const value = warehouse
+  const normalizedWarehouse = warehouse
     .replace(/^(відділення|поштомат)\s*(№|#)?\s*/iu, '')
     .trim();
+  const number = normalizedWarehouse.match(/\d+/u)?.[0];
+  const value = number || normalizedWarehouse;
 
   return value ? `${label} ${value}` : label;
 }
@@ -679,6 +681,83 @@ export function buildShippingNoteAttributes(body: CheckoutPayload) {
   ].filter((attribute) => attribute.value);
 }
 
+type ShopifyOrderMetafield = {
+  namespace: string;
+  key: string;
+  type: 'json';
+  value: string;
+};
+
+function jsonMetafield(
+  key: string,
+  value: Record<string, unknown>,
+): ShopifyOrderMetafield | undefined {
+  if (Object.keys(value).length === 0) return undefined;
+
+  return {
+    namespace: 'okolo',
+    key,
+    type: 'json',
+    value: JSON.stringify(value),
+  };
+}
+
+/** Keeps technical checkout data in Shopify without exposing it to CRM comments. */
+export function buildShopifyOrderMetafields(
+  body: CheckoutPayload,
+  paymentAmount: number,
+  options: ShopifyOrderBuildOptions = {},
+): ShopifyOrderMetafield[] {
+  const paymentType = normalizePaymentTypeForShopify(body.payment_type);
+  const paymentStatus = options.paymentStatus || 'unpaid';
+  const paymentTag = paymentStatus === 'unpaid'
+    ? getUnpaidPaymentTag(body.payment_type)
+    : getPaidPaymentTag(body.payment_type);
+  const paidAmount = options.paidAmount || 0;
+  const tracking = {
+    ...(body.utm || {}),
+    ...(body.tracking || {}),
+  };
+
+  return [
+    jsonMetafield('utm', tracking),
+    jsonMetafield('tracking', body.tracking || {}),
+    jsonMetafield('checkout_data', {
+      payment_type: paymentType,
+      payment_status: paymentStatus,
+      payment_tag: paymentTag,
+      amount: getCartTotal(body),
+      paid_amount: paidAmount,
+      payment_amount: paymentAmount,
+      invoice_id: options.invoiceId || '',
+      shipping_type: asString(body.shipping_type) || 'ukraine',
+      shipping: body.shipping || {},
+      cart_token: asString(body.cart_token),
+    }),
+  ].filter((metafield): metafield is ShopifyOrderMetafield => Boolean(metafield));
+}
+
+async function saveShopifyOrderMetafields(
+  orderId: number,
+  metafields: ShopifyOrderMetafield[],
+): Promise<void> {
+  for (const metafield of metafields) {
+    try {
+      await shopifyRequest(`/orders/${orderId}/metafields.json`, {
+        method: 'POST',
+        body: JSON.stringify({ metafield }),
+      });
+    } catch (error) {
+      console.error('[Shopify] Failed to save order metafield:', {
+        orderId,
+        namespace: metafield.namespace,
+        key: metafield.key,
+        error,
+      });
+    }
+  }
+}
+
 function paidStatusForPaymentType(paymentType: PaymentType | CheckoutPayload['payment_type']): ShopifyPaidStatus {
   return paymentType === 'prepayment' ? 'partially_paid' : 'paid';
 }
@@ -699,7 +778,6 @@ export function buildShopifyOrderPayload(
   const paymentTag = paymentStatus === 'unpaid'
     ? getUnpaidPaymentTag(body.payment_type)
     : getPaidPaymentTag(body.payment_type);
-  const paidAmount = options.paidAmount || 0;
   const orderNote = baseOrderNote;
 
   if (lineItems.length === 0) throw new Error('Missing cart goods for Shopify order');
@@ -715,22 +793,9 @@ export function buildShopifyOrderPayload(
     send_fulfillment_receipt: false,
     inventory_behaviour: 'decrement_obeying_policy',
     note: orderNote,
-    note_attributes: [
-      { name: 'payment_type', value: paymentType },
-      { name: 'shipping_type', value: asString(body.shipping_type) || 'ukraine' },
-      { name: 'payment_status', value: paymentStatus },
-      { name: 'Сума', value: formatPaymentAttributeAmount(cartTotal) },
-      { name: 'Сплата', value: formatPaymentAttributeAmount(paidAmount) },
-      { name: 'Paid amount', value: formatPaymentAttributeAmount(paidAmount) },
-      ...buildShippingNoteAttributes(body),
-      ...buildLegacyIntegrationNoteAttributes(body, paymentAmount, {
-        paymentStatus,
-        paymentTag,
-        paidAmount,
-        invoiceId: options.invoiceId,
-      }),
-      ...buildTrackingNoteAttributes(body),
-    ].filter((attribute) => attribute.value),
+    // CRM imports Shopify note_attributes into the order comment. Keep it empty;
+    // technical data is stored separately as order metafields after creation.
+    note_attributes: [],
     shipping_address: buildShippingAddress(body),
     billing_address: buildShippingAddress(body),
     line_items: lineItems,
@@ -763,6 +828,10 @@ export async function createShopifyOrder(body: CheckoutPayload, paymentAmount: n
   });
 
   if (!data.order?.id) throw new Error('Shopify response missing order id');
+  await saveShopifyOrderMetafields(
+    data.order.id,
+    buildShopifyOrderMetafields(body, paymentAmount),
+  );
   console.log('Shopify order created:', {
     id: data.order.id,
     name: data.order.name,
@@ -794,6 +863,15 @@ export async function createShopifyOrderAfterPayment(
   });
 
   if (!data.order?.id) throw new Error('Shopify response missing order id');
+  await saveShopifyOrderMetafields(
+    data.order.id,
+    buildShopifyOrderMetafields(body, paidAmount, {
+      financialStatus: paidStatusForPaymentType(body.payment_type),
+      paymentStatus: paidStatusForPaymentType(body.payment_type),
+      paidAmount,
+      invoiceId,
+    }),
+  );
   console.log('Shopify order created after payment:', {
     id: data.order.id,
     name: data.order.name,
@@ -814,55 +892,16 @@ export function buildOrderUpdateAfterPayment(
   existingTags: unknown = '',
   existingNote: unknown = '',
 ) {
+  void amount;
+  void invoiceId;
+  void existingNoteAttributes;
   const isPrepayment = paymentType === 'prepayment';
-  const normalizedPaymentType = normalizePaymentTypeForShopify(paymentType);
-  const paidAmount = formatPaymentAttributeAmount(amount);
-  const paymentStatus = isPrepayment ? 'partially_paid' : 'paid';
   const paidPaymentTag = getPaidPaymentTag(paymentType);
-  const paymentLabel = (() => {
-    if (isPrepayment) return 'Передплата Monobank';
-    if (paymentType === 'no_prepayment') return 'Накладений платіж';
-    if (paymentType === 'installments') return 'Покупка частинами Monobank';
-    return 'Повна оплата';
-  })();
-  const noteAttributeByName = new Map<string, string>();
-
-  for (const attribute of existingNoteAttributes) {
-    const name = asString(attribute.name);
-    const value = asString(attribute.value);
-    if (name && value) noteAttributeByName.set(name, value);
-  }
-
-  noteAttributeByName.set('payment_type', normalizedPaymentType);
-  noteAttributeByName.set('payment_status', paymentStatus);
-  noteAttributeByName.set('payment_tag', paidPaymentTag);
-  noteAttributeByName.set('Payment tag', paidPaymentTag);
-  noteAttributeByName.set('Payment status tag', paidPaymentTag);
-  noteAttributeByName.set('Payment', paymentLabel);
-  noteAttributeByName.set('Сплата', paidAmount);
-  noteAttributeByName.set('Paid amount', paidAmount);
-  noteAttributeByName.set('monobank_paid_amount', paidAmount);
-  if (env.sitniksSettlementAccountId > 0) {
-    noteAttributeByName.set('payment_account_id', String(env.sitniksSettlementAccountId));
-    noteAttributeByName.set('settlement_account_id', String(env.sitniksSettlementAccountId));
-  }
-  if (env.sitniksSettlementAccountTitle) {
-    noteAttributeByName.set('Payment account', env.sitniksSettlementAccountTitle);
-    noteAttributeByName.set('Settlement Account', env.sitniksSettlementAccountTitle);
-  }
-  if (invoiceId) noteAttributeByName.set('monobank_invoice_id', invoiceId);
-  if (!noteAttributeByName.has('Сума') && !isPrepayment) {
-    noteAttributeByName.set('Сума', paidAmount);
-  }
-  if (noteAttributeByName.has('Comment')) {
-    noteAttributeByName.set('Comment', stripPaymentCrmComment(noteAttributeByName.get('Comment') || ''));
-  }
-
   const orderUpdate: Record<string, unknown> = {
     id: orderId,
     note: stripPaymentCrmComment(asString(existingNote)),
     tags: withPaymentStatusTag(existingTags, paidPaymentTag),
-    note_attributes: Array.from(noteAttributeByName.entries()).map(([name, value]) => ({ name, value })),
+    note_attributes: [],
   };
 
   if (isPrepayment) {
