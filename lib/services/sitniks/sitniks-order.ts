@@ -6,12 +6,12 @@ import type { ShopifyOrder } from '../../types/shopify';
 import { asNumber, asString, parseJsonObject } from '../../utils/format';
 import {
   buildCustomerSourceComment,
+  buildKeyCrmComment,
   buildInternationalCheckoutComment,
   getCartTotal,
   getPaymentAmount,
   getShippingPrice,
   isInternationalCheckout,
-  stripCustomerSourceComment,
 } from '../shopify/shopify-order';
 
 export interface SitniksOrderResponse {
@@ -503,9 +503,7 @@ export function buildSitniksOrderPayload(
   const goodsComment = buildGoodsComment(body);
   const deliveryComment = buildDeliveryComment(body);
   const customerSourceComment = buildCustomerSourceComment(body);
-  const clientComment = isInternationalCheckout(body)
-    ? buildInternationalCheckoutComment(body)
-    : stripCustomerSourceComment(asString(body.comment));
+  const clientComment = buildKeyCrmComment(body);
   const managerComment = [
     `Shopify order: ${shopifyOrder.name || shopifyOrder.id}`,
     `Варіант оплати: ${paymentType}`,

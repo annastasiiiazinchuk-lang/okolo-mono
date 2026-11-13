@@ -208,6 +208,11 @@ function legacyPaymentLabel(body: CheckoutPayload, isInternational = false): str
   return 'Повна оплата';
 }
 
+function legacyDeliveryMethodLabel(deliveryMethod: string): string {
+  if (deliveryMethod === 'address') return 'Адресна доставка';
+  return 'Відділення / Поштомат';
+}
+
 function formatPaymentAttributeAmount(amount: number): string {
   const rounded = Math.round(asNumber(amount) * 100) / 100;
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
@@ -226,12 +231,53 @@ function checkoutCommentValue(body: CheckoutPayload, label: RegExp): string {
   return line ? line.replace(/^.*?:\s*/u, '').trim() : '';
 }
 
+function formatNovaPoshtaPoint(deliveryMethod: string, warehouse: string): string {
+  const label = deliveryMethod === 'postomat' ? 'поштомат' : 'відділення';
+  const value = warehouse
+    .replace(/^(відділення|поштомат)\s*(№|#)?\s*/iu, '')
+    .trim();
+
+  return value ? `${label} ${value}` : label;
+}
+
+function buildKeyCrmDelivery(body: CheckoutPayload): string {
+  const shipping = body.shipping || {};
+  const city = asString(shipping.city);
+
+  if (isInternationalCheckout(body)) {
+    const country = asString(shipping.country);
+    const internationalCity = asString(shipping.intl_city) || city;
+    const address = [
+      asString(shipping.address),
+      asString(shipping.apartment),
+      asString(shipping.postcode),
+    ].filter(Boolean).join(', ');
+
+    return [country, internationalCity, address].filter(Boolean).join(', ');
+  }
+
+  const deliveryMethod = asString(shipping.delivery_method) || 'branch';
+  if (deliveryMethod === 'address') {
+    const address = [
+      asString(shipping.street),
+      asString(shipping.house),
+      asString(shipping.apartment),
+    ].filter(Boolean).join(', ');
+    return [city, address].filter(Boolean).join(', ');
+  }
+
+  return [city, formatNovaPoshtaPoint(deliveryMethod, asString(shipping.warehouse))]
+    .filter(Boolean)
+    .join(', ');
+}
+
 /** The only customer-facing text sent to the KeyCRM comment field. */
 export function buildKeyCrmComment(body: CheckoutPayload): string {
   const customer = body.customer || {};
   const phone = normalizeShopifyPhone(customer.phone);
   const instagram = checkoutCommentValue(body, /^Instagram\/Telegram\s*:/iu);
   const contactMethod = checkoutCommentValue(body, /^Як зв['’ʼ]язатись\s*:/iu);
+  const delivery = buildKeyCrmDelivery(body);
 
   return [
     customerFullName(body) ? `Імʼя, прізвище: ${customerFullName(body)}` : '',
@@ -239,6 +285,7 @@ export function buildKeyCrmComment(body: CheckoutPayload): string {
     `Payment: ${legacyPaymentLabel(body, isInternationalCheckout(body))}`,
     instagram ? `Instagram/Telegram: ${instagram}` : '',
     contactMethod ? `Як зв'язатись: ${contactMethod}` : '',
+    delivery ? `Доставка: ${delivery}` : '',
   ].filter(Boolean).join('\n');
 }
 
@@ -414,18 +461,61 @@ function buildLegacyIntegrationNoteAttributes(
     invoiceId?: string;
   } = {},
 ) {
+  const customer = body.customer || {};
+  const shipping = body.shipping || {};
   const isInternational = isInternationalCheckout(body);
   const paymentTag = options.paymentTag || getUnpaidPaymentTag(body.payment_type);
+  const deliveryMethod = asString(shipping.delivery_method) || 'branch';
+  const country = isInternational ? asString(shipping.country) : 'Ukraine';
+  const city = isInternational
+    ? asString(shipping.intl_city) || asString(shipping.city)
+    : asString(shipping.city);
+  const warehouse = asString(shipping.warehouse);
+  const address = asString(shipping.address);
+  const apartment = asString(shipping.apartment);
+  const postcode = asString(shipping.postcode);
+  const countryCode = isInternational ? getCountryCode(asString(shipping.country_code) || country) : '';
+  const cityRef = asString(shipping.city_ref);
+  const warehouseRef = asString(shipping.warehouse_ref);
   const cashOnDelivery = body.payment_type === 'prepayment' || body.payment_type === 'no_prepayment';
   const utm = buildLegacyUtmValue(body);
   const customerSourceComment = buildCustomerSourceComment(body);
   const commentBase = buildKeyCrmComment(body);
+  const internationalFields = isInternational
+    ? [
+        { name: '_country-code', value: countryCode },
+        { name: 'Country', value: country },
+        { name: 'Address', value: address },
+        { name: 'Apartment', value: apartment },
+        { name: 'Zip code', value: postcode },
+        { name: 'Postcode', value: postcode },
+        { name: '_delivery_country', value: country },
+        { name: '_delivery_country_code', value: countryCode },
+        { name: '_delivery_address', value: address },
+        { name: '_delivery_apartment', value: apartment },
+        { name: '_delivery_postcode', value: postcode },
+        { name: '_delivery_zip', value: postcode },
+        { name: '_delivery_warehouse_zip', value: postcode },
+        { name: '_delivery_warehouse_name', value: warehouse },
+        { name: '_delivery_warehouse_address', value: address },
+      ]
+    : [];
 
   return [
+    { name: 'Recipient Name', value: customerFullName(body) },
+    { name: 'Recipient Phone', value: asString(customer.phone) },
+    { name: 'Recipient Email', value: asString(customer.email) },
+    { name: 'Delivery Method', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'Нова пошта' },
+    { name: 'City', value: city },
+    { name: 'Post Office', value: warehouse },
+    { name: '_zip-code', value: postcode },
     { name: 'Payment', value: legacyPaymentLabel(body, isInternational) },
     { name: 'Comment', value: commentBase },
     { name: 'Customer source', value: customerSourceComment },
     { name: 'ЗВІДКИ КЛІЄНТ', value: customerSourceComment.replace(/^ЗВІДКИ КЛІЄНТ\n?/u, '') },
+    { name: 'Shipping', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'За тарифами перевізника' },
+    { name: '_provider', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'Нова пошта' },
+    { name: '_country', value: country },
     { name: 'Payment tag', value: paymentTag },
     { name: 'payment_tag', value: paymentTag },
     { name: 'Payment status tag', value: paymentTag },
@@ -433,6 +523,14 @@ function buildLegacyIntegrationNoteAttributes(
     { name: 'settlement_account_id', value: env.sitniksSettlementAccountId ? String(env.sitniksSettlementAccountId) : '' },
     { name: 'Payment account', value: env.sitniksSettlementAccountTitle },
     { name: 'Settlement Account', value: env.sitniksSettlementAccountTitle },
+    { name: '_delivery_type', value: isInternational ? 'international' : deliveryMethod },
+    { name: '_delivery_method', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : legacyDeliveryMethodLabel(deliveryMethod) },
+    { name: '_delivery_city', value: city },
+    { name: '_delivery_city_Ref', value: cityRef },
+    { name: '_delivery_warehouse', value: warehouse },
+    { name: '_delivery_warehouse_CityRef', value: cityRef },
+    { name: '_delivery_warehouse_Ref', value: warehouseRef },
+    ...internationalFields,
     { name: 'UTM', value: utm },
     { name: 'Currency rate', value: '1' },
     { name: 'Cash on delivery', value: cashOnDelivery ? 'true' : 'false' },
@@ -617,7 +715,22 @@ export function buildShopifyOrderPayload(
     send_fulfillment_receipt: false,
     inventory_behaviour: 'decrement_obeying_policy',
     note: orderNote,
-    note_attributes: [],
+    note_attributes: [
+      { name: 'payment_type', value: paymentType },
+      { name: 'shipping_type', value: asString(body.shipping_type) || 'ukraine' },
+      { name: 'payment_status', value: paymentStatus },
+      { name: 'Сума', value: formatPaymentAttributeAmount(cartTotal) },
+      { name: 'Сплата', value: formatPaymentAttributeAmount(paidAmount) },
+      { name: 'Paid amount', value: formatPaymentAttributeAmount(paidAmount) },
+      ...buildShippingNoteAttributes(body),
+      ...buildLegacyIntegrationNoteAttributes(body, paymentAmount, {
+        paymentStatus,
+        paymentTag,
+        paidAmount,
+        invoiceId: options.invoiceId,
+      }),
+      ...buildTrackingNoteAttributes(body),
+    ].filter((attribute) => attribute.value),
     shipping_address: buildShippingAddress(body),
     billing_address: buildShippingAddress(body),
     line_items: lineItems,
@@ -749,7 +862,7 @@ export function buildOrderUpdateAfterPayment(
     id: orderId,
     note: stripPaymentCrmComment(asString(existingNote)),
     tags: withPaymentStatusTag(existingTags, paidPaymentTag),
-    note_attributes: [],
+    note_attributes: Array.from(noteAttributeByName.entries()).map(([name, value]) => ({ name, value })),
   };
 
   if (isPrepayment) {

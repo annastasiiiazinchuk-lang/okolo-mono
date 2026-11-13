@@ -68,7 +68,12 @@ describe('Sitniks order mapping', () => {
       phone: '0682345729',
       email: 'test@example.com',
     });
-    expect(payload.clientComment).toBe('Подзвоніть перед відправкою');
+    expect(payload.clientComment).toBe([
+      'Імʼя, прізвище: Анастасія Зінчук',
+      'Телефон: +380682345729',
+      'Payment: Накладений платіж',
+      'Доставка: Київ, відділення 12',
+    ].join('\n'));
     expect(payload.utm).toEqual({ source: 'facebook', campaign: 'summer' });
     expect(String(payload.managerComment)).toContain('Shopify order: #1001');
     expect(String(payload.managerComment)).toContain('Передплата 300 грн');
@@ -103,7 +108,14 @@ describe('Sitniks order mapping', () => {
       utm: {},
     }, { id: 1302, name: '#1302' });
 
-    expect(String(payload.clientComment)).not.toContain('ЗВІДКИ КЛІЄНТ');
+    expect(payload.clientComment).toBe([
+      'Імʼя, прізвище: Анастасія Зінчук',
+      'Телефон: +380682345729',
+      'Payment: Накладений платіж',
+      'Instagram/Telegram: ТЕСТ',
+      "Як зв'язатись: Напишіть мені",
+      'Доставка: Київ, відділення 12',
+    ].join('\n'));
     expect(String(payload.managerComment)).toContain('ЗВІДКИ КЛІЄНТ');
     expect(String(payload.managerComment)).toContain('Instagram');
     expect(String(payload.managerComment)).toContain('UTM source: google');
@@ -345,11 +357,12 @@ describe('Sitniks order mapping', () => {
       },
     }, { id: 124, name: '#1002' });
 
-    expect(String(payload.clientComment)).toContain('Тип доставки: закордон');
-    expect(String(payload.clientComment)).toContain('Recipient Email: test@example.com');
-    expect(String(payload.clientComment)).toContain('Country: Poland');
-    expect(String(payload.clientComment)).toContain('Zip code: 00-001');
-    expect(String(payload.clientComment)).toContain('Payment: Повна оплата');
+    expect(payload.clientComment).toBe([
+      'Імʼя, прізвище: Анастасія Зінчук',
+      'Телефон: +380682345729',
+      'Payment: Повна оплата',
+      'Доставка: Poland, Warsaw, Main street 1, 2, 00-001',
+    ].join('\n'));
     expect(String(payload.managerComment)).toContain('Повна оплата');
     expect(String(payload.managerComment)).toContain('Тип доставки: закордон');
     expect(String(payload.managerComment)).toContain('Доставка: за кордон');
