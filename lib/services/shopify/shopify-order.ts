@@ -217,27 +217,6 @@ function stripPaymentCrmComment(note: string): string {
   return note.replace(/\n*CRM оплата:[\s\S]*$/u, '').trim();
 }
 
-function generatedCheckoutLine(line: string): boolean {
-  return /^(?:Instagram\/Telegram|Як зв['’ʼ]язатись|Доставка|Спосіб оплати|Оплата|Передплата|UTM\s+(?:source|medium|campaign|content|term)|traffic_source)\s*:/iu.test(line);
-}
-
-/** Keep only the free-text comment for Shopify/KeyCRM's customer comment field. */
-export function buildCustomerComment(body: CheckoutPayload): string {
-  const lines = asString(body.comment)
-    .split(/\r?\n/u)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const commentLines: string[] = [];
-
-  for (const line of lines) {
-    if (/^(?:ЗВІДКИ КЛІЄНТ|CRM оплата:)$/iu.test(line)) break;
-    if (generatedCheckoutLine(line)) continue;
-    commentLines.push(line);
-  }
-
-  return commentLines.join('\n').trim();
-}
-
 function checkoutCommentValue(body: CheckoutPayload, label: RegExp): string {
   const line = asString(body.comment)
     .split(/\r?\n/u)
@@ -247,17 +226,20 @@ function checkoutCommentValue(body: CheckoutPayload, label: RegExp): string {
   return line ? line.replace(/^.*?:\s*/u, '').trim() : '';
 }
 
-function buildCheckoutContactNoteAttributes(body: CheckoutPayload) {
+/** The only customer-facing text sent to the KeyCRM comment field. */
+export function buildKeyCrmComment(body: CheckoutPayload): string {
+  const customer = body.customer || {};
+  const phone = normalizeShopifyPhone(customer.phone);
+  const instagram = checkoutCommentValue(body, /^Instagram\/Telegram\s*:/iu);
+  const contactMethod = checkoutCommentValue(body, /^Як зв['’ʼ]язатись\s*:/iu);
+
   return [
-    {
-      name: 'Instagram/Telegram',
-      value: checkoutCommentValue(body, /^Instagram\/Telegram\s*:/iu),
-    },
-    {
-      name: 'Як зв\'язатись',
-      value: checkoutCommentValue(body, /^Як зв['’ʼ]язатись\s*:/iu),
-    },
-  ].filter((attribute) => attribute.value);
+    customerFullName(body) ? `Імʼя, прізвище: ${customerFullName(body)}` : '',
+    phone ? `Телефон: ${phone}` : '',
+    `Payment: ${legacyPaymentLabel(body, isInternationalCheckout(body))}`,
+    instagram ? `Instagram/Telegram: ${instagram}` : '',
+    contactMethod ? `Як зв'язатись: ${contactMethod}` : '',
+  ].filter(Boolean).join('\n');
 }
 
 function trackingValue(tracking: Record<string, unknown>, key: string): string {
@@ -437,12 +419,11 @@ function buildLegacyIntegrationNoteAttributes(
   const cashOnDelivery = body.payment_type === 'prepayment' || body.payment_type === 'no_prepayment';
   const utm = buildLegacyUtmValue(body);
   const customerSourceComment = buildCustomerSourceComment(body);
-  const commentBase = buildCustomerComment(body);
+  const commentBase = buildKeyCrmComment(body);
 
   return [
     { name: 'Payment', value: legacyPaymentLabel(body, isInternational) },
     { name: 'Comment', value: commentBase },
-    ...buildCheckoutContactNoteAttributes(body),
     { name: 'Customer source', value: customerSourceComment },
     { name: 'ЗВІДКИ КЛІЄНТ', value: customerSourceComment.replace(/^ЗВІДКИ КЛІЄНТ\n?/u, '') },
     { name: 'Payment tag', value: paymentTag },
@@ -615,7 +596,7 @@ export function buildShopifyOrderPayload(
   const cartTotal = getCartTotal(body);
   const lineItems = buildLineItems(body);
   const shippingPrice = 0;
-  const baseOrderNote = buildCustomerComment(body);
+  const baseOrderNote = buildKeyCrmComment(body);
   const paymentStatus = options.paymentStatus || 'unpaid';
   const paymentTag = paymentStatus === 'unpaid'
     ? getUnpaidPaymentTag(body.payment_type)
@@ -636,21 +617,7 @@ export function buildShopifyOrderPayload(
     send_fulfillment_receipt: false,
     inventory_behaviour: 'decrement_obeying_policy',
     note: orderNote,
-    note_attributes: [
-      { name: 'payment_type', value: paymentType },
-      { name: 'shipping_type', value: asString(body.shipping_type) || 'ukraine' },
-      { name: 'payment_status', value: paymentStatus },
-      { name: 'Сума', value: formatPaymentAttributeAmount(cartTotal) },
-      { name: 'Сплата', value: formatPaymentAttributeAmount(paidAmount) },
-      { name: 'Paid amount', value: formatPaymentAttributeAmount(paidAmount) },
-      ...buildLegacyIntegrationNoteAttributes(body, paymentAmount, {
-        paymentStatus,
-        paymentTag,
-        paidAmount,
-        invoiceId: options.invoiceId,
-      }),
-      ...buildTrackingNoteAttributes(body),
-    ].filter((attribute) => attribute.value),
+    note_attributes: [],
     shipping_address: buildShippingAddress(body),
     billing_address: buildShippingAddress(body),
     line_items: lineItems,
@@ -782,7 +749,7 @@ export function buildOrderUpdateAfterPayment(
     id: orderId,
     note: stripPaymentCrmComment(asString(existingNote)),
     tags: withPaymentStatusTag(existingTags, paidPaymentTag),
-    note_attributes: Array.from(noteAttributeByName.entries()).map(([name, value]) => ({ name, value })),
+    note_attributes: [],
   };
 
   if (isPrepayment) {

@@ -3,7 +3,7 @@ import {
   buildOrderUpdateAfterPayment,
   buildPaidShopifyOrderPayload,
   buildShippingAddress,
-  buildCustomerComment,
+  buildKeyCrmComment,
   buildShopifyOrderPayload,
   getPaymentAmount,
   getShippingPrice,
@@ -80,37 +80,12 @@ describe('Shopify order mapping', () => {
     const payload = buildShopifyOrderPayload(basePayload, getPaymentAmount(basePayload));
 
     expect(payload.order.tags).toBe('full_payment_unpaid');
-    expect(String(payload.order.note)).toBe('');
-    const commentAttribute = (payload.order.note_attributes as Array<{ name?: string; value?: string }>)
-      .find((attribute) => attribute.name === 'Comment');
-    expect(commentAttribute).toBeUndefined();
-    const attributeNames = (payload.order.note_attributes as Array<{ name?: string }>).map((attribute) => attribute.name);
-    expect(attributeNames).not.toEqual(expect.arrayContaining([
-      'Recipient Name',
-      'Recipient Phone',
-      'Recipient Email',
-      'City',
-      'Post Office',
-      'nova_poshta_city',
-      'nova_poshta_warehouse',
-      '_delivery_city',
-      '_delivery_warehouse',
-    ]));
-    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
-      { name: 'payment_type', value: 'full_payment' },
-      { name: 'shipping_type', value: 'ukraine' },
-      { name: 'payment_status', value: 'unpaid' },
-      { name: 'Сума', value: '1200' },
-      { name: 'Сплата', value: '0' },
-      { name: 'Paid amount', value: '0' },
-      { name: 'Payment', value: 'Повна оплата' },
-      { name: 'Payment tag', value: 'full_payment_unpaid' },
-      { name: 'payment_tag', value: 'full_payment_unpaid' },
-      { name: 'Payment status tag', value: 'full_payment_unpaid' },
-      { name: 'Currency rate', value: '1' },
-      { name: 'Cash on delivery', value: 'false' },
-      { name: 'Checkout id', value: 'cart-token' },
-    ]));
+    expect(payload.order.note).toBe([
+      'Імʼя, прізвище: Анастасія Зінчук',
+      'Телефон: +380682345729',
+      'Payment: Повна оплата',
+    ].join('\n'));
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('order additional details include UTM marks in Checkly-compatible field', () => {
@@ -132,24 +107,12 @@ describe('Shopify order mapping', () => {
         gclid: 'google-click-id',
       },
     }, getPaymentAmount(basePayload));
-    const utmAttribute = (payload.order.note_attributes as Array<{ name?: string; value?: string }>)
-      .find((attribute) => attribute.name === 'UTM');
-    const commentAttribute = (payload.order.note_attributes as Array<{ name?: string; value?: string }>)
-      .find((attribute) => attribute.name === 'Comment');
-
-    expect(utmAttribute?.value).toContain('utm_medium: social');
-    expect(utmAttribute?.value).toContain('utm_source: ig');
-    expect(utmAttribute?.value).toContain('utm_campaign: fall');
-    expect(utmAttribute?.value).toContain('utm_content: link_in_bio');
-    expect(utmAttribute?.value).toContain('utm_term: midi');
-    expect(utmAttribute?.value).toContain('fbclid: fb-click-id');
-    expect(utmAttribute?.value).toContain('gclid: google-click-id');
-    expect(utmAttribute?.value).toContain('_fbc: fb.1.17887050587983.fb-click-id');
-    expect(utmAttribute?.value).toContain('_fbp: fb.1.17887050546561.847850575329279795');
-    expect(utmAttribute?.value).toContain('utm_lang: uk');
-    expect(utmAttribute?.value).toContain('utm_id: campaign-123');
-    expect(String(payload.order.note)).toBe('');
-    expect(commentAttribute).toBeUndefined();
+    expect(payload.order.note).toBe([
+      'Імʼя, прізвище: Анастасія Зінчук',
+      'Телефон: +380682345729',
+      'Payment: Повна оплата',
+    ].join('\n'));
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('formats Instagram product sync source with separate UTM lines', () => {
@@ -174,20 +137,17 @@ describe('Shopify order mapping', () => {
         gclid: 'google-click-id',
       },
     }, getPaymentAmount(basePayload));
-    const note = String(payload.order.note);
-    const commentAttribute = (payload.order.note_attributes as Array<{ name?: string; value?: string }>)
-      .find((attribute) => attribute.name === 'Comment');
-
-    expect(note).toBe('Передзвоніть перед відправкою');
-    expect(commentAttribute?.value).toBe('Передзвоніть перед відправкою');
-    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
-      { name: 'Instagram/Telegram', value: 'ТЕСТ' },
-      { name: 'Як зв\'язатись', value: 'Напишіть мені' },
-      { name: 'UTM', value: expect.stringContaining('utm_campaign: sag_organic') },
-    ]));
+    expect(payload.order.note).toBe([
+      'Імʼя, прізвище: Анастасія Зінчук',
+      'Телефон: +380682345729',
+      'Payment: Повна оплата',
+      'Instagram/Telegram: ТЕСТ',
+      'Як зв\'язатись: Напишіть мені',
+    ].join('\n'));
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
-  test('keeps only the free-text customer comment', () => {
+  test('builds only the selected KeyCRM comment fields', () => {
     const body = {
       ...basePayload,
       comment: [
@@ -202,9 +162,16 @@ describe('Shopify order mapping', () => {
       ].join('\n'),
     };
 
-    expect(buildCustomerComment(body)).toBe('Мій коментар');
+    expect(buildKeyCrmComment(body)).toBe([
+      'Імʼя, прізвище: Анастасія Зінчук',
+      'Телефон: +380682345729',
+      'Payment: Повна оплата',
+      'Instagram/Telegram: @okolo',
+      'Як зв\'язатись: Напишіть мені',
+    ].join('\n'));
     const payload = buildShopifyOrderPayload(body, getPaymentAmount(body));
-    expect(payload.order.note).toBe('Мій коментар');
+    expect(payload.order.note).toBe(buildKeyCrmComment(body));
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('custom checkout orders do not add Shopify taxes', () => {
@@ -257,11 +224,12 @@ describe('Shopify order mapping', () => {
       country: 'Poland',
       zip: '00-001',
     });
-    expect(String(payload.order.note)).toBe('');
-    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
-      { name: 'shipping_type', value: 'international' },
-      { name: 'Payment', value: 'Повна оплата' },
-    ]));
+    expect(payload.order.note).toBe([
+      'Імʼя, прізвище: Анастасія Зінчук',
+      'Телефон: +380682345729',
+      'Payment: Повна оплата',
+    ].join('\n'));
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('prepayment amount is fixed at 300', () => {
@@ -279,15 +247,12 @@ describe('Shopify order mapping', () => {
     expect(getPaymentAmount(noPrepaymentPayload)).toBe(0);
     expect(payload.order.financial_status).toBe('pending');
     expect(payload.order.tags).toBe('no_prepayment');
-    expect(String(payload.order.note)).toBe('');
-    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
-      { name: 'payment_type', value: 'no_prepayment' },
-      { name: 'payment_status', value: 'unpaid' },
-      { name: 'Payment', value: 'Накладений платіж' },
-      { name: 'Payment tag', value: 'no_prepayment' },
-      { name: 'payment_tag', value: 'no_prepayment' },
-      { name: 'Cash on delivery', value: 'true' },
-    ]));
+    expect(payload.order.note).toBe([
+      'Імʼя, прізвище: Анастасія Зінчук',
+      'Телефон: +380682345729',
+      'Payment: Накладений платіж',
+    ].join('\n'));
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('prepayment order starts pending with not_paid_300 tag and no discount before payment', () => {
@@ -300,14 +265,7 @@ describe('Shopify order mapping', () => {
     expect(payload.order.discount_codes).toBeUndefined();
     expect(lineItems[0].taxable).toBe(false);
     expect(lineItems[0].tax_lines).toEqual([]);
-    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
-      { name: 'payment_type', value: 'prepayment_300' },
-      { name: 'Payment', value: 'Накладений платіж' },
-      { name: 'Payment tag', value: 'prepayment_300_unpaid' },
-      { name: 'payment_tag', value: 'prepayment_300_unpaid' },
-      { name: 'Cash on delivery', value: 'true' },
-      { name: 'Partial payment value - Monobank', value: '300 UAH' },
-    ]));
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('full payment order created after Monobank success is paid immediately', () => {
@@ -315,19 +273,12 @@ describe('Shopify order mapping', () => {
 
     expect(payload.order.financial_status).toBe('paid');
     expect(payload.order.tags).toBe('full_payment_paid');
-    expect(String(payload.order.note)).toBe('');
-    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
-      { name: 'payment_type', value: 'full_payment' },
-      { name: 'payment_status', value: 'paid' },
-      { name: 'Сума', value: '1200' },
-      { name: 'Сплата', value: '1200' },
-      { name: 'Paid amount', value: '1200' },
-      { name: 'Payment', value: 'Повна оплата' },
-      { name: 'Payment tag', value: 'full_payment_paid' },
-      { name: 'payment_tag', value: 'full_payment_paid' },
-      { name: 'Cash on delivery', value: 'false' },
-      { name: 'monobank_invoice_id', value: 'invoice-paid-1' },
-    ]));
+    expect(payload.order.note).toBe([
+      'Імʼя, прізвище: Анастасія Зінчук',
+      'Телефон: +380682345729',
+      'Payment: Повна оплата',
+    ].join('\n'));
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('prepayment order created after Monobank success is partially paid with Checkly fields', () => {
@@ -336,23 +287,15 @@ describe('Shopify order mapping', () => {
 
     expect(payload.order.financial_status).toBe('partially_paid');
     expect(payload.order.tags).toBe('prepayment_300_paid');
-    expect(String(payload.order.note)).toBe('');
-    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
-      { name: 'payment_type', value: 'prepayment_300' },
-      { name: 'payment_status', value: 'partially_paid' },
-      { name: 'Сума', value: '1200' },
-      { name: 'Сплата', value: '300' },
-      { name: 'Paid amount', value: '300' },
-      { name: 'Payment', value: 'Накладений платіж' },
-      { name: 'Payment tag', value: 'prepayment_300_paid' },
-      { name: 'payment_tag', value: 'prepayment_300_paid' },
-      { name: 'Cash on delivery', value: 'true' },
-      { name: 'Partial payment value - Monobank', value: '300 UAH' },
-      { name: 'monobank_invoice_id', value: 'invoice-paid-300' },
-    ]));
+    expect(payload.order.note).toBe([
+      'Імʼя, прізвище: Анастасія Зінчук',
+      'Телефон: +380682345729',
+      'Payment: Накладений платіж',
+    ].join('\n'));
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
-  test('international order created after payment keeps delivery details in Comment attribute', () => {
+  test('international order created after payment keeps the clean KeyCRM comment', () => {
     const internationalPayload: CheckoutPayload = {
       ...basePayload,
       payment_type: 'full',
@@ -371,12 +314,13 @@ describe('Shopify order mapping', () => {
       comment: 'Добрий день, відправте Новою поштою',
     };
     const payload = buildPaidShopifyOrderPayload(internationalPayload, 2200, 'invoice-intl-1');
-    const commentAttribute = (payload.order.note_attributes as Array<{ name?: string; value?: string }>)
-      .find((attribute) => attribute.name === 'Comment');
-
     expect(payload.order.financial_status).toBe('paid');
-    expect(commentAttribute?.value).toContain('Добрий день, відправте Новою поштою');
-    expect(commentAttribute?.value).toBe('Добрий день, відправте Новою поштою');
+    expect(payload.order.note).toBe([
+      'Імʼя, прізвище: Анастасія Зінчук',
+      'Телефон: +380682345729',
+      'Payment: Повна оплата',
+    ].join('\n'));
+    expect(payload.order.note_attributes).toEqual([]);
   });
 
   test('prepayment after payment marks Shopify as partially paid and stores paid amount', () => {
@@ -390,20 +334,7 @@ describe('Shopify order mapping', () => {
     expect(update.tags).toBe('manual, prepayment_300_paid');
     expect(String(update.note)).toBe('');
     expect(update.discount_codes).toBeUndefined();
-    expect(update.note_attributes).toEqual([
-      { name: 'payment_type', value: 'prepayment_300' },
-      { name: 'shipping_type', value: 'ukraine' },
-      { name: 'Сума', value: '1200' },
-      { name: 'Сплата', value: '300' },
-      { name: 'payment_status', value: 'partially_paid' },
-      { name: 'payment_tag', value: 'prepayment_300_paid' },
-      { name: 'Payment tag', value: 'prepayment_300_paid' },
-      { name: 'Payment status tag', value: 'prepayment_300_paid' },
-      { name: 'Payment', value: 'Передплата Monobank' },
-      { name: 'Paid amount', value: '300' },
-      { name: 'monobank_paid_amount', value: '300' },
-      { name: 'monobank_invoice_id', value: 'invoice-1' },
-    ]);
+    expect(update.note_attributes).toEqual([]);
   });
 
   test('full payment after payment sets paid status and no prepayment tag', () => {
@@ -425,32 +356,14 @@ describe('Shopify order mapping', () => {
     expect(String(update.note)).toContain('Передзвоніть клієнту');
     expect(String(update.note)).not.toContain('CRM оплата:');
     expect(String(update.note)).not.toContain('Сплата: 0');
-    expect(update.note_attributes).toEqual([
-      { name: 'payment_type', value: 'full_payment' },
-      { name: 'shipping_type', value: 'ukraine' },
-      { name: 'payment_status', value: 'paid' },
-      { name: 'payment_tag', value: 'full_payment_paid' },
-      { name: 'Payment tag', value: 'full_payment_paid' },
-      { name: 'Payment status tag', value: 'full_payment_paid' },
-      { name: 'Payment', value: 'Повна оплата' },
-      { name: 'Сплата', value: '1200' },
-      { name: 'Paid amount', value: '1200' },
-      { name: 'monobank_paid_amount', value: '1200' },
-      { name: 'monobank_invoice_id', value: 'invoice-1' },
-      { name: 'Сума', value: '1200' },
-    ]);
+    expect(update.note_attributes).toEqual([]);
   });
 
   test('installments order is marked separately and becomes paid after approval', () => {
     const payload = buildShopifyOrderPayload({ ...basePayload, payment_type: 'installments' }, 1200);
     expect(payload.order.financial_status).toBe('pending');
     expect(payload.order.tags).toBe('monobank_parts_unpaid');
-    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
-      { name: 'payment_type', value: 'monobank_parts' },
-      { name: 'shipping_type', value: 'ukraine' },
-      { name: 'Payment', value: 'Покупка частинами Monobank' },
-      { name: 'Cash on delivery', value: 'false' },
-    ]));
+    expect(payload.order.note_attributes).toEqual([]);
 
     const update = buildOrderUpdateAfterPayment(123, 1200, 'parts-order-1', 'installments', [
       { name: 'payment_type', value: 'monobank_parts' },
@@ -458,20 +371,7 @@ describe('Shopify order mapping', () => {
     ]);
     expect(update.financial_status).toBe('paid');
     expect(update.tags).toBe('monobank_parts_paid');
-    expect(update.note_attributes).toEqual([
-      { name: 'payment_type', value: 'monobank_parts' },
-      { name: 'shipping_type', value: 'ukraine' },
-      { name: 'payment_status', value: 'paid' },
-      { name: 'payment_tag', value: 'monobank_parts_paid' },
-      { name: 'Payment tag', value: 'monobank_parts_paid' },
-      { name: 'Payment status tag', value: 'monobank_parts_paid' },
-      { name: 'Payment', value: 'Покупка частинами Monobank' },
-      { name: 'Сплата', value: '1200' },
-      { name: 'Paid amount', value: '1200' },
-      { name: 'monobank_paid_amount', value: '1200' },
-      { name: 'monobank_invoice_id', value: 'parts-order-1' },
-      { name: 'Сума', value: '1200' },
-    ]);
+    expect(update.note_attributes).toEqual([]);
   });
 
   test('Nova Poshta branch maps city and branch separately', () => {
