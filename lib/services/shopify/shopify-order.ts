@@ -231,6 +231,29 @@ function checkoutCommentValue(body: CheckoutPayload, label: RegExp): string {
   return line ? line.replace(/^.*?:\s*/u, '').trim() : '';
 }
 
+function trackingFromComment(comment: unknown): Record<string, string> {
+  const lines = asString(comment).split(/\r?\n/u).map((line) => line.trim());
+  const sourceIndex = lines.findIndex((line) => /^ЗВІДКИ КЛІЄНТ$/iu.test(line));
+  if (sourceIndex < 0) return {};
+
+  const result: Record<string, string> = {};
+  const sourceLines = lines.slice(sourceIndex + 1);
+  for (const line of sourceLines) {
+    const match = line.match(/^(UTM source|UTM medium|UTM campaign|UTM content|UTM term|tracking_gclid|tracking_fbp):\s*(.+)$/iu);
+    if (match) {
+      const key = match[1].toLowerCase().replace(/\s+/gu, '_');
+      result[key] = match[2].trim();
+      continue;
+    }
+
+    if (!result.traffic_source && line && !line.includes(':')) {
+      result.traffic_source = line;
+    }
+  }
+
+  return result;
+}
+
 function formatNovaPoshtaPoint(deliveryMethod: string, warehouse: string): string {
   const label = deliveryMethod === 'postomat' ? 'поштомат' : 'відділення';
   const normalizedWarehouse = warehouse
@@ -353,7 +376,9 @@ export function stripCustomerSourceComment(note: string): string {
 }
 
 export function buildCustomerSourceComment(body: CheckoutPayload): string {
+  const commentTracking = trackingFromComment(body.comment);
   const tracking: Record<string, unknown> = {
+    ...commentTracking,
     ...(body.utm || {}),
     ...(body.tracking || {}),
   };

@@ -201,7 +201,13 @@ describe('Shopify order mapping', () => {
         'Спосіб оплати: Післяплата',
         'Передплата: менеджер зв\'яжеться для проведення мінімальної передплати 200 грн',
         'ЗВІДКИ КЛІЄНТ',
-        'Google',
+        'Instagram',
+        'UTM source: google',
+        'UTM medium: product_sync',
+        'UTM campaign: sag_organic',
+        'UTM content: sag_organic',
+        'tracking_gclid: fallback-gclid',
+        'tracking_fbp: fallback-fbp',
       ].join('\n'),
     };
 
@@ -212,6 +218,14 @@ describe('Shopify order mapping', () => {
       'Instagram/Telegram: @okolo',
       'Як зв\'язатись: Напишіть мені',
       'Доставка: Харків, відділення 107',
+      'ЗВІДКИ КЛІЄНТ',
+      'Instagram',
+      'UTM source: google',
+      'UTM medium: product_sync',
+      'UTM campaign: sag_organic',
+      'UTM content: sag_organic',
+      'tracking_gclid: fallback-gclid',
+      'tracking_fbp: fallback-fbp',
     ].join('\n'));
     const payload = buildShopifyOrderPayload(body, getPaymentAmount(body));
     expect(payload.order.note).toBe(buildKeyCrmComment(body));
