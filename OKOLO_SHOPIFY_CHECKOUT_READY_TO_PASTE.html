@@ -1461,6 +1461,13 @@
     return raw;
   }
 
+  function extractGclidFromGclAw(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const parts = raw.split('.');
+    return parts.length >= 3 ? parts.slice(2).join('.') : '';
+  }
+
   function trafficSourceFromText(value) {
     const text = String(value || '').toLocaleLowerCase('uk-UA');
     if (/instagram|(^|\W)ig($|\W)/i.test(text)) return 'Instagram';
@@ -1494,6 +1501,11 @@
     return text ? `${label}: ${text}` : '';
   }
 
+  function trackingValueLines(label, value) {
+    const text = humanTrackingValue(value);
+    return text ? [label, text] : [];
+  }
+
   function readableUtmSource(tracking) {
     const directSource = humanTrackingValue(tracking.utm_source);
     if (directSource) return directSource;
@@ -1513,7 +1525,8 @@
       trackingLine('UTM medium', tracking.utm_medium),
       trackingLine('UTM campaign', tracking.utm_campaign),
       trackingLine('UTM content', tracking.utm_content),
-      trackingLine('UTM term', tracking.utm_term),
+      ...trackingValueLines('tracking_gclid', tracking.gclid),
+      ...trackingValueLines('tracking_fbp', tracking.fbp),
     ].filter(Boolean);
 
     return lines.length ? ['ЗВІДКИ КЛІЄНТ', ...lines].join('\n') : '';
@@ -1547,6 +1560,10 @@
         hasFreshTracking = true;
       }
     });
+
+    if (!tracking.gclid && tracking.gcl_aw) {
+      tracking.gclid = extractGclidFromGclAw(tracking.gcl_aw);
+    }
 
     tracking.traffic_source = detectTrafficSource(tracking);
     if (hasFreshTracking || !saved.landing_page) writeJsonStorage(TRACKING_STORAGE_KEY, tracking);

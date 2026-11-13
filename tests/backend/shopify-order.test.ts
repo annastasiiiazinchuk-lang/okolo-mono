@@ -120,9 +120,10 @@ describe('Shopify order mapping', () => {
       'UTM medium: social',
       'UTM campaign: fall',
       'UTM content: link_in_bio',
-      'UTM term: midi',
-      'tracking_gclid: google-click-id',
-      'tracking_fbp: fb.1.17887050546561.847850575329279795',
+      'tracking_gclid',
+      'google-click-id',
+      'tracking_fbp',
+      'fb.1.17887050546561.847850575329279795',
     ].join('\n'));
     expect(payload.order.note_attributes).toEqual([]);
     const metafields = buildShopifyOrderMetafields({
@@ -179,10 +180,50 @@ describe('Shopify order mapping', () => {
       'UTM source: google',
       'UTM medium: product_sync',
       'UTM campaign: sag_organic',
-      'tracking_gclid: google-click-id',
-      'tracking_fbp: fb.1.17887050546561.847850575329279795',
+      'tracking_gclid',
+      'google-click-id',
+      'tracking_fbp',
+      'fb.1.17887050546561.847850575329279795',
     ].join('\n'));
     expect(payload.order.note_attributes).toEqual([]);
+  });
+
+  test('keeps only the selected attribution fields in the source block', () => {
+    const payload = buildShopifyOrderPayload({
+      ...basePayload,
+      utm: {
+        utm_source: 'google',
+        utm_medium: 'product_sync',
+        utm_campaign: 'sag_organic',
+        utm_content: 'sag_organic',
+        utm_term: 'should-not-be-visible',
+      },
+      tracking: {
+        traffic_source: 'Instagram',
+        gclid: 'Cj0KCQiA5NXXBhDEARIsABAJhdL2dr0uLaF_UDduMf4xr-yjzfY5AM9vZDxhRWLTyg8dB_dL6jGO1NQaAmpMEALw_wcB',
+        fbp: 'fb.1.1794508733758.319187076336487902',
+        user_agent: 'technical-data',
+      },
+    }, getPaymentAmount(basePayload));
+
+    expect(payload.order.note).toBe([
+      'Імʼя, прізвище: Анастасія Зінчук',
+      'Телефон: +380682345729',
+      'Payment: Повна оплата',
+      'Доставка: Київ, відділення 12',
+      'ЗВІДКИ КЛІЄНТ',
+      'Instagram',
+      'UTM source: google',
+      'UTM medium: product_sync',
+      'UTM campaign: sag_organic',
+      'UTM content: sag_organic',
+      'tracking_gclid',
+      'Cj0KCQiA5NXXBhDEARIsABAJhdL2dr0uLaF_UDduMf4xr-yjzfY5AM9vZDxhRWLTyg8dB_dL6jGO1NQaAmpMEALw_wcB',
+      'tracking_fbp',
+      'fb.1.1794508733758.319187076336487902',
+    ].join('\n'));
+    expect(payload.order.note).not.toContain('should-not-be-visible');
+    expect(payload.order.note).not.toContain('technical-data');
   });
 
   test('builds only the selected KeyCRM comment fields', () => {
@@ -206,8 +247,10 @@ describe('Shopify order mapping', () => {
         'UTM medium: product_sync',
         'UTM campaign: sag_organic',
         'UTM content: sag_organic',
-        'tracking_gclid: fallback-gclid',
-        'tracking_fbp: fallback-fbp',
+        'tracking_gclid',
+        'fallback-gclid',
+        'tracking_fbp',
+        'fallback-fbp',
       ].join('\n'),
     };
 
@@ -224,8 +267,10 @@ describe('Shopify order mapping', () => {
       'UTM medium: product_sync',
       'UTM campaign: sag_organic',
       'UTM content: sag_organic',
-      'tracking_gclid: fallback-gclid',
-      'tracking_fbp: fallback-fbp',
+      'tracking_gclid',
+      'fallback-gclid',
+      'tracking_fbp',
+      'fallback-fbp',
     ].join('\n'));
     const payload = buildShopifyOrderPayload(body, getPaymentAmount(body));
     expect(payload.order.note).toBe(buildKeyCrmComment(body));

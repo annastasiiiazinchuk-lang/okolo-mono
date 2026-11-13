@@ -238,8 +238,19 @@ function trackingFromComment(comment: unknown): Record<string, string> {
 
   const result: Record<string, string> = {};
   const sourceLines = lines.slice(sourceIndex + 1);
-  for (const line of sourceLines) {
-    const match = line.match(/^(UTM source|UTM medium|UTM campaign|UTM content|UTM term|tracking_gclid|tracking_fbp):\s*(.+)$/iu);
+  for (let index = 0; index < sourceLines.length; index += 1) {
+    const line = sourceLines[index];
+    const standaloneKey = line.match(/^(tracking_gclid|tracking_fbp)$/iu);
+    if (standaloneKey) {
+      const value = sourceLines[index + 1] || '';
+      if (value) {
+        result[standaloneKey[1].toLowerCase()] = value;
+        index += 1;
+      }
+      continue;
+    }
+
+    const match = line.match(/^(UTM source|UTM medium|UTM campaign|UTM content|tracking_gclid|tracking_fbp):\s*(.+)$/iu);
     if (match) {
       const key = match[1].toLowerCase().replace(/\s+/gu, '_');
       result[key] = match[2].trim();
@@ -393,9 +404,8 @@ export function buildCustomerSourceComment(body: CheckoutPayload): string {
     humanTrackingValue(trackingValue(tracking, 'utm_medium')) ? `UTM medium: ${humanTrackingValue(trackingValue(tracking, 'utm_medium'))}` : '',
     humanTrackingValue(trackingValue(tracking, 'utm_campaign')) ? `UTM campaign: ${humanTrackingValue(trackingValue(tracking, 'utm_campaign'))}` : '',
     humanTrackingValue(trackingValue(tracking, 'utm_content')) ? `UTM content: ${humanTrackingValue(trackingValue(tracking, 'utm_content'))}` : '',
-    humanTrackingValue(trackingValue(tracking, 'utm_term')) ? `UTM term: ${humanTrackingValue(trackingValue(tracking, 'utm_term'))}` : '',
-    gclid ? `tracking_gclid: ${gclid}` : '',
-    fbp ? `tracking_fbp: ${fbp}` : '',
+    ...(gclid ? ['tracking_gclid', gclid] : []),
+    ...(fbp ? ['tracking_fbp', fbp] : []),
   ].filter(Boolean);
 
   return lines.length ? ['ЗВІДКИ КЛІЄНТ', ...lines].join('\n') : '';
