@@ -3,6 +3,7 @@ import {
   buildOrderUpdateAfterPayment,
   buildPaidShopifyOrderPayload,
   buildShippingAddress,
+  buildCustomerComment,
   buildShopifyOrderPayload,
   getPaymentAmount,
   getShippingPrice,
@@ -79,17 +80,22 @@ describe('Shopify order mapping', () => {
     const payload = buildShopifyOrderPayload(basePayload, getPaymentAmount(basePayload));
 
     expect(payload.order.tags).toBe('full_payment_unpaid');
-    expect(String(payload.order.note)).toContain('CRM оплата:');
-    expect(String(payload.order.note)).toContain('Payment: Повна оплата');
-    expect(String(payload.order.note)).toContain('Сума: 1200');
-    expect(String(payload.order.note)).toContain('Сплата: 0');
-    expect(String(payload.order.note)).toContain('Статус оплати: unpaid');
-    expect(String(payload.order.note)).toContain('Тег оплати: full_payment_unpaid');
+    expect(String(payload.order.note)).toBe('');
     const commentAttribute = (payload.order.note_attributes as Array<{ name?: string; value?: string }>)
       .find((attribute) => attribute.name === 'Comment');
-    expect(commentAttribute?.value).toContain('CRM оплата:');
-    expect(commentAttribute?.value).toContain('Сплата: 0');
-    expect(commentAttribute?.value).toContain('Тег оплати: full_payment_unpaid');
+    expect(commentAttribute).toBeUndefined();
+    const attributeNames = (payload.order.note_attributes as Array<{ name?: string }>).map((attribute) => attribute.name);
+    expect(attributeNames).not.toEqual(expect.arrayContaining([
+      'Recipient Name',
+      'Recipient Phone',
+      'Recipient Email',
+      'City',
+      'Post Office',
+      'nova_poshta_city',
+      'nova_poshta_warehouse',
+      '_delivery_city',
+      '_delivery_warehouse',
+    ]));
     expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'payment_type', value: 'full_payment' },
       { name: 'shipping_type', value: 'ukraine' },
@@ -97,32 +103,10 @@ describe('Shopify order mapping', () => {
       { name: 'Сума', value: '1200' },
       { name: 'Сплата', value: '0' },
       { name: 'Paid amount', value: '0' },
-      { name: 'delivery_type', value: 'nova_poshta' },
-      { name: 'nova_poshta_delivery_method', value: 'branch' },
-      { name: 'nova_poshta_city', value: 'Київ' },
-      { name: 'nova_poshta_city_ref', value: 'city-ref-kyiv' },
-      { name: 'nova_poshta_warehouse', value: 'Відділення №12' },
-      { name: 'nova_poshta_warehouse_ref', value: 'warehouse-ref-12' },
-      { name: 'Recipient Name', value: 'Анастасія Зінчук' },
-      { name: 'Recipient Phone', value: '0682345729' },
-      { name: 'Recipient Email', value: 'test@example.com' },
-      { name: 'Delivery Method', value: 'Нова пошта' },
-      { name: 'City', value: 'Київ' },
-      { name: 'Post Office', value: 'Відділення №12' },
       { name: 'Payment', value: 'Повна оплата' },
-      { name: 'Shipping', value: 'За тарифами перевізника' },
-      { name: '_provider', value: 'Нова пошта' },
-      { name: '_country', value: 'Ukraine' },
       { name: 'Payment tag', value: 'full_payment_unpaid' },
       { name: 'payment_tag', value: 'full_payment_unpaid' },
       { name: 'Payment status tag', value: 'full_payment_unpaid' },
-      { name: '_delivery_type', value: 'branch' },
-      { name: '_delivery_method', value: 'Відділення / Поштомат' },
-      { name: '_delivery_city', value: 'Київ' },
-      { name: '_delivery_city_Ref', value: 'city-ref-kyiv' },
-      { name: '_delivery_warehouse', value: 'Відділення №12' },
-      { name: '_delivery_warehouse_CityRef', value: 'city-ref-kyiv' },
-      { name: '_delivery_warehouse_Ref', value: 'warehouse-ref-12' },
       { name: 'Currency rate', value: '1' },
       { name: 'Cash on delivery', value: 'false' },
       { name: 'Checkout id', value: 'cart-token' },
@@ -164,22 +148,19 @@ describe('Shopify order mapping', () => {
     expect(utmAttribute?.value).toContain('_fbp: fb.1.17887050546561.847850575329279795');
     expect(utmAttribute?.value).toContain('utm_lang: uk');
     expect(utmAttribute?.value).toContain('utm_id: campaign-123');
-    expect(String(payload.order.note)).toContain('ЗВІДКИ КЛІЄНТ');
-    expect(String(payload.order.note)).toContain('UTM source: ig');
-    expect(String(payload.order.note)).not.toContain('FBCLID');
-    expect(String(payload.order.note)).not.toContain('GCLID');
-    expect(commentAttribute?.value).toContain('ЗВІДКИ КЛІЄНТ');
-    expect(commentAttribute?.value).toContain('UTM campaign: fall');
-    expect(commentAttribute?.value).not.toContain('FBCLID');
-    expect(commentAttribute?.value).not.toContain('GCLID');
+    expect(String(payload.order.note)).toBe('');
+    expect(commentAttribute).toBeUndefined();
   });
 
   test('formats Instagram product sync source with separate UTM lines', () => {
     const payload = buildShopifyOrderPayload({
       ...basePayload,
       comment: [
+        'Передзвоніть перед відправкою',
         'Instagram/Telegram: ТЕСТ',
         'Як звʼязатись: Напишіть мені',
+        'Доставка: Нова пошта (відділення), оплата доставки на пошті',
+        'Спосіб оплати: Повна оплата',
         'ЗВІДКИ КЛІЄНТ',
         'Google',
       ].join('\n'),
@@ -197,11 +178,33 @@ describe('Shopify order mapping', () => {
     const commentAttribute = (payload.order.note_attributes as Array<{ name?: string; value?: string }>)
       .find((attribute) => attribute.name === 'Comment');
 
-    expect(note.match(/ЗВІДКИ КЛІЄНТ/g)?.length).toBe(1);
-    expect(note).toContain('ЗВІДКИ КЛІЄНТ\nInstagram\nUTM source: google\nUTM medium: product_sync\nUTM campaign: sag_organic');
-    expect(note).not.toContain('ЗВІДКИ КЛІЄНТ\nGoogle\n\nCRM оплата');
-    expect(commentAttribute?.value).toContain('ЗВІДКИ КЛІЄНТ\nInstagram');
-    expect(commentAttribute?.value).toContain('UTM campaign: sag_organic');
+    expect(note).toBe('Передзвоніть перед відправкою');
+    expect(commentAttribute?.value).toBe('Передзвоніть перед відправкою');
+    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
+      { name: 'Instagram/Telegram', value: 'ТЕСТ' },
+      { name: 'Як зв\'язатись', value: 'Напишіть мені' },
+      { name: 'UTM', value: expect.stringContaining('utm_campaign: sag_organic') },
+    ]));
+  });
+
+  test('keeps only the free-text customer comment', () => {
+    const body = {
+      ...basePayload,
+      comment: [
+        'Мій коментар',
+        'Instagram/Telegram: @okolo',
+        'Як зв\'язатись: Напишіть мені',
+        'Доставка: Нова пошта (відділення), оплата доставки на пошті',
+        'Спосіб оплати: Післяплата',
+        'Передплата: менеджер зв\'яжеться для проведення мінімальної передплати 200 грн',
+        'ЗВІДКИ КЛІЄНТ',
+        'Google',
+      ].join('\n'),
+    };
+
+    expect(buildCustomerComment(body)).toBe('Мій коментар');
+    const payload = buildShopifyOrderPayload(body, getPaymentAmount(body));
+    expect(payload.order.note).toBe('Мій коментар');
   });
 
   test('custom checkout orders do not add Shopify taxes', () => {
@@ -254,44 +257,10 @@ describe('Shopify order mapping', () => {
       country: 'Poland',
       zip: '00-001',
     });
-    expect(String(payload.order.note)).toContain('Тип доставки: закордон');
-    expect(String(payload.order.note)).toContain('Recipient Email: test@example.com');
-    expect(String(payload.order.note)).toContain('Country: Poland');
-    expect(String(payload.order.note)).toContain('Zip code: 00-001');
-    expect(String(payload.order.note)).toContain('Payment: Повна оплата');
-    expect(String(payload.order.note)).toContain('CRM оплата:');
-    expect(String(payload.order.note)).toContain('Тег оплати: full_payment_unpaid');
+    expect(String(payload.order.note)).toBe('');
     expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'shipping_type', value: 'international' },
-      { name: 'delivery_type', value: 'international' },
-      { name: 'delivery_country', value: 'Poland' },
-      { name: 'delivery_city', value: 'Warsaw' },
-      { name: 'delivery_address', value: 'Main street 1' },
-      { name: 'delivery_apartment', value: '2' },
-      { name: 'delivery_postcode', value: '00-001' },
-      { name: 'Delivery Method', value: 'Міжнародна доставка' },
-      { name: '_country-code', value: 'PL' },
-      { name: 'Country', value: 'Poland' },
-      { name: 'City', value: 'Warsaw' },
-      { name: 'Address', value: 'Main street 1' },
-      { name: 'Apartment', value: '2' },
-      { name: 'Zip code', value: '00-001' },
-      { name: 'Postcode', value: '00-001' },
       { name: 'Payment', value: 'Повна оплата' },
-      { name: 'Shipping', value: 'Міжнародна доставка' },
-      { name: '_provider', value: 'Міжнародна доставка' },
-      { name: '_country', value: 'Poland' },
-      { name: '_delivery_type', value: 'international' },
-      { name: '_delivery_method', value: 'Міжнародна доставка' },
-      { name: '_delivery_country', value: 'Poland' },
-      { name: '_delivery_country_code', value: 'PL' },
-      { name: '_delivery_city', value: 'Warsaw' },
-      { name: '_delivery_address', value: 'Main street 1' },
-      { name: '_delivery_apartment', value: '2' },
-      { name: '_delivery_postcode', value: '00-001' },
-      { name: '_delivery_zip', value: '00-001' },
-      { name: '_delivery_warehouse_zip', value: '00-001' },
-      { name: '_delivery_warehouse_address', value: 'Main street 1' },
     ]));
   });
 
@@ -310,10 +279,7 @@ describe('Shopify order mapping', () => {
     expect(getPaymentAmount(noPrepaymentPayload)).toBe(0);
     expect(payload.order.financial_status).toBe('pending');
     expect(payload.order.tags).toBe('no_prepayment');
-    expect(String(payload.order.note)).toContain('Payment: Накладений платіж');
-    expect(String(payload.order.note)).toContain('Сума: 1200');
-    expect(String(payload.order.note)).toContain('Сплата: 0');
-    expect(String(payload.order.note)).toContain('Тег оплати: no_prepayment');
+    expect(String(payload.order.note)).toBe('');
     expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'payment_type', value: 'no_prepayment' },
       { name: 'payment_status', value: 'unpaid' },
@@ -349,11 +315,7 @@ describe('Shopify order mapping', () => {
 
     expect(payload.order.financial_status).toBe('paid');
     expect(payload.order.tags).toBe('full_payment_paid');
-    expect(String(payload.order.note)).toContain('Payment: Повна оплата');
-    expect(String(payload.order.note)).toContain('Сума: 1200');
-    expect(String(payload.order.note)).toContain('Сплата: 1200');
-    expect(String(payload.order.note)).toContain('Статус оплати: paid');
-    expect(String(payload.order.note)).toContain('Тег оплати: full_payment_paid');
+    expect(String(payload.order.note)).toBe('');
     expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'payment_type', value: 'full_payment' },
       { name: 'payment_status', value: 'paid' },
@@ -374,11 +336,7 @@ describe('Shopify order mapping', () => {
 
     expect(payload.order.financial_status).toBe('partially_paid');
     expect(payload.order.tags).toBe('prepayment_300_paid');
-    expect(String(payload.order.note)).toContain('Payment: Накладений платіж');
-    expect(String(payload.order.note)).toContain('Сума: 1200');
-    expect(String(payload.order.note)).toContain('Сплата: 300');
-    expect(String(payload.order.note)).toContain('Статус оплати: partially_paid');
-    expect(String(payload.order.note)).toContain('Тег оплати: prepayment_300_paid');
+    expect(String(payload.order.note)).toBe('');
     expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'payment_type', value: 'prepayment_300' },
       { name: 'payment_status', value: 'partially_paid' },
@@ -418,16 +376,7 @@ describe('Shopify order mapping', () => {
 
     expect(payload.order.financial_status).toBe('paid');
     expect(commentAttribute?.value).toContain('Добрий день, відправте Новою поштою');
-    expect(commentAttribute?.value).toContain('Тип доставки: закордон');
-    expect(commentAttribute?.value).toContain('Recipient Email: test@example.com');
-    expect(commentAttribute?.value).toContain('_country-code: ES');
-    expect(commentAttribute?.value).toContain('Country: Spain');
-    expect(commentAttribute?.value).toContain('City: Tarragona');
-    expect(commentAttribute?.value).toContain('Address: Calle L. Van Beethoven');
-    expect(commentAttribute?.value).toContain('Apartment: 7A');
-    expect(commentAttribute?.value).toContain('Zip code: 43007');
-    expect(commentAttribute?.value).toContain('Payment: Повна оплата');
-    expect(commentAttribute?.value).toContain('Статус оплати: paid');
+    expect(commentAttribute?.value).toBe('Добрий день, відправте Новою поштою');
   });
 
   test('prepayment after payment marks Shopify as partially paid and stores paid amount', () => {
@@ -439,12 +388,7 @@ describe('Shopify order mapping', () => {
     ], 'manual, not_paid_300, prepayment_300_unpaid');
     expect(update.financial_status).toBe('partially_paid');
     expect(update.tags).toBe('manual, prepayment_300_paid');
-    expect(String(update.note)).toContain('CRM оплата:');
-    expect(String(update.note)).toContain('Payment: Передплата Monobank');
-    expect(String(update.note)).toContain('Сума: 1200');
-    expect(String(update.note)).toContain('Сплата: 300');
-    expect(String(update.note)).toContain('Статус оплати: partially_paid');
-    expect(String(update.note)).toContain('Тег оплати: prepayment_300_paid');
+    expect(String(update.note)).toBe('');
     expect(update.discount_codes).toBeUndefined();
     expect(update.note_attributes).toEqual([
       { name: 'payment_type', value: 'prepayment_300' },
@@ -459,18 +403,6 @@ describe('Shopify order mapping', () => {
       { name: 'Paid amount', value: '300' },
       { name: 'monobank_paid_amount', value: '300' },
       { name: 'monobank_invoice_id', value: 'invoice-1' },
-      {
-        name: 'Comment',
-        value: [
-          'CRM оплата:',
-          'Payment: Передплата Monobank',
-          'Сума: 1200',
-          'Сплата: 300',
-          'Статус оплати: partially_paid',
-          'Тег оплати: prepayment_300_paid',
-          'Invoice: invoice-1',
-        ].join('\n'),
-      },
     ]);
   });
 
@@ -491,15 +423,8 @@ describe('Shopify order mapping', () => {
     expect(update.financial_status).toBe('paid');
     expect(update.tags).toBe('manual, full_payment_paid');
     expect(String(update.note)).toContain('Передзвоніть клієнту');
-    expect(String(update.note)).toContain('CRM оплата:');
-    expect(String(update.note)).toContain('Payment: Повна оплата');
-    expect(String(update.note)).toContain('Сума: 1200');
-    expect(String(update.note)).toContain('Сплата: 1200');
-    expect(String(update.note)).toContain('Статус оплати: paid');
-    expect(String(update.note)).toContain('Тег оплати: full_payment_paid');
-    expect(String(update.note)).toContain('Invoice: invoice-1');
+    expect(String(update.note)).not.toContain('CRM оплата:');
     expect(String(update.note)).not.toContain('Сплата: 0');
-    expect(String(update.note).match(/CRM оплата:/g)?.length).toBe(1);
     expect(update.note_attributes).toEqual([
       { name: 'payment_type', value: 'full_payment' },
       { name: 'shipping_type', value: 'ukraine' },
@@ -513,18 +438,6 @@ describe('Shopify order mapping', () => {
       { name: 'monobank_paid_amount', value: '1200' },
       { name: 'monobank_invoice_id', value: 'invoice-1' },
       { name: 'Сума', value: '1200' },
-      {
-        name: 'Comment',
-        value: [
-          'CRM оплата:',
-          'Payment: Повна оплата',
-          'Сума: 1200',
-          'Сплата: 1200',
-          'Статус оплати: paid',
-          'Тег оплати: full_payment_paid',
-          'Invoice: invoice-1',
-        ].join('\n'),
-      },
     ]);
   });
 
@@ -535,15 +448,7 @@ describe('Shopify order mapping', () => {
     expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'payment_type', value: 'monobank_parts' },
       { name: 'shipping_type', value: 'ukraine' },
-      { name: 'delivery_type', value: 'nova_poshta' },
-      { name: 'nova_poshta_delivery_method', value: 'branch' },
-      { name: 'nova_poshta_city', value: 'Київ' },
-      { name: 'nova_poshta_city_ref', value: 'city-ref-kyiv' },
-      { name: 'nova_poshta_warehouse', value: 'Відділення №12' },
-      { name: 'nova_poshta_warehouse_ref', value: 'warehouse-ref-12' },
       { name: 'Payment', value: 'Покупка частинами Monobank' },
-      { name: '_delivery_city_Ref', value: 'city-ref-kyiv' },
-      { name: '_delivery_warehouse_Ref', value: 'warehouse-ref-12' },
       { name: 'Cash on delivery', value: 'false' },
     ]));
 
@@ -566,18 +471,6 @@ describe('Shopify order mapping', () => {
       { name: 'monobank_paid_amount', value: '1200' },
       { name: 'monobank_invoice_id', value: 'parts-order-1' },
       { name: 'Сума', value: '1200' },
-      {
-        name: 'Comment',
-        value: [
-          'CRM оплата:',
-          'Payment: Покупка частинами Monobank',
-          'Сума: 1200',
-          'Сплата: 1200',
-          'Статус оплати: paid',
-          'Тег оплати: monobank_parts_paid',
-          'Invoice: parts-order-1',
-        ].join('\n'),
-      },
     ]);
   });
 

@@ -208,46 +208,56 @@ function legacyPaymentLabel(body: CheckoutPayload, isInternational = false): str
   return 'Повна оплата';
 }
 
-function legacyDeliveryMethodLabel(deliveryMethod: string): string {
-  if (deliveryMethod === 'address') return 'Адресна доставка';
-  return 'Відділення / Поштомат';
-}
-
 function formatPaymentAttributeAmount(amount: number): string {
   const rounded = Math.round(asNumber(amount) * 100) / 100;
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
-}
-
-function buildPaymentCrmComment(params: {
-  paymentLabel: string;
-  paymentStatus: string;
-  paymentTag: string;
-  cartTotal: number;
-  paidAmount: number;
-  invoiceId?: string;
-}): string {
-  return [
-    'CRM оплата:',
-    `Payment: ${params.paymentLabel}`,
-    params.cartTotal ? `Сума: ${formatPaymentAttributeAmount(params.cartTotal)}` : '',
-    `Сплата: ${formatPaymentAttributeAmount(params.paidAmount)}`,
-    `Статус оплати: ${params.paymentStatus}`,
-    `Тег оплати: ${params.paymentTag}`,
-    env.sitniksSettlementAccountTitle ? `Р/Р: ${env.sitniksSettlementAccountTitle}` : '',
-    env.sitniksSettlementAccountId > 0 ? `Р/Р ID: ${env.sitniksSettlementAccountId}` : '',
-    params.invoiceId ? `Invoice: ${params.invoiceId}` : '',
-  ].filter(Boolean).join('\n');
 }
 
 function stripPaymentCrmComment(note: string): string {
   return note.replace(/\n*CRM оплата:[\s\S]*$/u, '').trim();
 }
 
-function withPaymentCrmComment(note: unknown, paymentComment: string): string {
+function generatedCheckoutLine(line: string): boolean {
+  return /^(?:Instagram\/Telegram|Як зв['’ʼ]язатись|Доставка|Спосіб оплати|Оплата|Передплата|UTM\s+(?:source|medium|campaign|content|term)|traffic_source)\s*:/iu.test(line);
+}
+
+/** Keep only the free-text comment for Shopify/KeyCRM's customer comment field. */
+export function buildCustomerComment(body: CheckoutPayload): string {
+  const lines = asString(body.comment)
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const commentLines: string[] = [];
+
+  for (const line of lines) {
+    if (/^(?:ЗВІДКИ КЛІЄНТ|CRM оплата:)$/iu.test(line)) break;
+    if (generatedCheckoutLine(line)) continue;
+    commentLines.push(line);
+  }
+
+  return commentLines.join('\n').trim();
+}
+
+function checkoutCommentValue(body: CheckoutPayload, label: RegExp): string {
+  const line = asString(body.comment)
+    .split(/\r?\n/u)
+    .map((value) => value.trim())
+    .find((value) => label.test(value));
+
+  return line ? line.replace(/^.*?:\s*/u, '').trim() : '';
+}
+
+function buildCheckoutContactNoteAttributes(body: CheckoutPayload) {
   return [
-    stripPaymentCrmComment(asString(note)),
-    paymentComment,
-  ].filter(Boolean).join('\n\n');
+    {
+      name: 'Instagram/Telegram',
+      value: checkoutCommentValue(body, /^Instagram\/Telegram\s*:/iu),
+    },
+    {
+      name: 'Як зв\'язатись',
+      value: checkoutCommentValue(body, /^Як зв['’ʼ]язатись\s*:/iu),
+    },
+  ].filter((attribute) => attribute.value);
 }
 
 function trackingValue(tracking: Record<string, unknown>, key: string): string {
@@ -422,74 +432,19 @@ function buildLegacyIntegrationNoteAttributes(
     invoiceId?: string;
   } = {},
 ) {
-  const customer = body.customer || {};
-  const shipping = body.shipping || {};
   const isInternational = isInternationalCheckout(body);
   const paymentTag = options.paymentTag || getUnpaidPaymentTag(body.payment_type);
-  const paymentStatus = options.paymentStatus || 'unpaid';
-  const paidAmount = options.paidAmount || 0;
-  const deliveryMethod = asString(shipping.delivery_method) || 'branch';
-  const country = isInternational ? asString(shipping.country) : 'Ukraine';
-  const city = isInternational
-    ? asString(shipping.intl_city) || asString(shipping.city)
-    : asString(shipping.city);
-  const warehouse = asString(shipping.warehouse);
-  const address = asString(shipping.address);
-  const apartment = asString(shipping.apartment);
-  const postcode = asString(shipping.postcode);
-  const countryCode = isInternational ? getCountryCode(asString(shipping.country_code) || country) : '';
-  const cityRef = asString(shipping.city_ref);
-  const warehouseRef = asString(shipping.warehouse_ref);
   const cashOnDelivery = body.payment_type === 'prepayment' || body.payment_type === 'no_prepayment';
   const utm = buildLegacyUtmValue(body);
-  const paymentCrmComment = buildPaymentCrmComment({
-    paymentLabel: legacyPaymentLabel(body, isInternational),
-    paymentStatus,
-    paymentTag,
-    cartTotal: getCartTotal(body),
-    paidAmount,
-    invoiceId: options.invoiceId,
-  });
   const customerSourceComment = buildCustomerSourceComment(body);
-  const commentBase = [
-    isInternational ? buildInternationalCheckoutComment(body) : stripCustomerSourceComment(asString(body.comment)),
-    customerSourceComment,
-  ].filter(Boolean).join('\n\n');
-  const internationalFields = isInternational
-    ? [
-        { name: '_country-code', value: countryCode },
-        { name: 'Country', value: country },
-        { name: 'Address', value: address },
-        { name: 'Apartment', value: apartment },
-        { name: 'Zip code', value: postcode },
-        { name: 'Postcode', value: postcode },
-        { name: '_delivery_country', value: country },
-        { name: '_delivery_country_code', value: countryCode },
-        { name: '_delivery_address', value: address },
-        { name: '_delivery_apartment', value: apartment },
-        { name: '_delivery_postcode', value: postcode },
-        { name: '_delivery_zip', value: postcode },
-        { name: '_delivery_warehouse_zip', value: postcode },
-        { name: '_delivery_warehouse_name', value: warehouse },
-        { name: '_delivery_warehouse_address', value: address },
-      ]
-    : [];
+  const commentBase = buildCustomerComment(body);
 
   return [
-    { name: 'Recipient Name', value: customerFullName(body) },
-    { name: 'Recipient Phone', value: asString(customer.phone) },
-    { name: 'Recipient Email', value: asString(customer.email) },
-    { name: 'Delivery Method', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'Нова пошта' },
-    { name: 'City', value: city },
-    { name: 'Post Office', value: warehouse },
-    { name: '_zip-code', value: postcode },
     { name: 'Payment', value: legacyPaymentLabel(body, isInternational) },
-    { name: 'Comment', value: withPaymentCrmComment(commentBase, paymentCrmComment) },
+    { name: 'Comment', value: commentBase },
+    ...buildCheckoutContactNoteAttributes(body),
     { name: 'Customer source', value: customerSourceComment },
     { name: 'ЗВІДКИ КЛІЄНТ', value: customerSourceComment.replace(/^ЗВІДКИ КЛІЄНТ\n?/u, '') },
-    { name: 'Shipping', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'За тарифами перевізника' },
-    { name: '_provider', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'Нова пошта' },
-    { name: '_country', value: country },
     { name: 'Payment tag', value: paymentTag },
     { name: 'payment_tag', value: paymentTag },
     { name: 'Payment status tag', value: paymentTag },
@@ -497,14 +452,6 @@ function buildLegacyIntegrationNoteAttributes(
     { name: 'settlement_account_id', value: env.sitniksSettlementAccountId ? String(env.sitniksSettlementAccountId) : '' },
     { name: 'Payment account', value: env.sitniksSettlementAccountTitle },
     { name: 'Settlement Account', value: env.sitniksSettlementAccountTitle },
-    { name: '_delivery_type', value: isInternational ? 'international' : deliveryMethod },
-    { name: '_delivery_method', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : legacyDeliveryMethodLabel(deliveryMethod) },
-    { name: '_delivery_city', value: city },
-    { name: '_delivery_city_Ref', value: cityRef },
-    { name: '_delivery_warehouse', value: warehouse },
-    { name: '_delivery_warehouse_CityRef', value: cityRef },
-    { name: '_delivery_warehouse_Ref', value: warehouseRef },
-    ...internationalFields,
     { name: 'UTM', value: utm },
     { name: 'Currency rate', value: '1' },
     { name: 'Cash on delivery', value: cashOnDelivery ? 'true' : 'false' },
@@ -668,26 +615,13 @@ export function buildShopifyOrderPayload(
   const cartTotal = getCartTotal(body);
   const lineItems = buildLineItems(body);
   const shippingPrice = 0;
-  const rawBaseOrderNote = isInternationalCheckout(body)
-    ? buildInternationalCheckoutComment(body)
-    : stripCustomerSourceComment(asString(body.comment));
-  const baseOrderNote = [
-    rawBaseOrderNote,
-    buildCustomerSourceComment(body),
-  ].filter(Boolean).join('\n\n');
+  const baseOrderNote = buildCustomerComment(body);
   const paymentStatus = options.paymentStatus || 'unpaid';
   const paymentTag = paymentStatus === 'unpaid'
     ? getUnpaidPaymentTag(body.payment_type)
     : getPaidPaymentTag(body.payment_type);
   const paidAmount = options.paidAmount || 0;
-  const orderNote = withPaymentCrmComment(baseOrderNote, buildPaymentCrmComment({
-    paymentLabel: legacyPaymentLabel(body, isInternationalCheckout(body)),
-    paymentStatus,
-    paymentTag,
-    cartTotal,
-    paidAmount,
-    invoiceId: options.invoiceId,
-  }));
+  const orderNote = baseOrderNote;
 
   if (lineItems.length === 0) throw new Error('Missing cart goods for Shopify order');
 
@@ -709,7 +643,6 @@ export function buildShopifyOrderPayload(
       { name: 'Сума', value: formatPaymentAttributeAmount(cartTotal) },
       { name: 'Сплата', value: formatPaymentAttributeAmount(paidAmount) },
       { name: 'Paid amount', value: formatPaymentAttributeAmount(paidAmount) },
-      ...buildShippingNoteAttributes(body),
       ...buildLegacyIntegrationNoteAttributes(body, paymentAmount, {
         paymentStatus,
         paymentTag,
@@ -841,20 +774,13 @@ export function buildOrderUpdateAfterPayment(
   if (!noteAttributeByName.has('Сума') && !isPrepayment) {
     noteAttributeByName.set('Сума', paidAmount);
   }
-  const cartTotal = asNumber(noteAttributeByName.get('Сума')) || (isPrepayment ? 0 : amount);
-  const paymentCrmComment = buildPaymentCrmComment({
-    paymentLabel,
-    paymentStatus,
-    paymentTag: paidPaymentTag,
-    cartTotal,
-    paidAmount: amount,
-    invoiceId,
-  });
-  noteAttributeByName.set('Comment', withPaymentCrmComment(noteAttributeByName.get('Comment'), paymentCrmComment));
+  if (noteAttributeByName.has('Comment')) {
+    noteAttributeByName.set('Comment', stripPaymentCrmComment(noteAttributeByName.get('Comment') || ''));
+  }
 
   const orderUpdate: Record<string, unknown> = {
     id: orderId,
-    note: withPaymentCrmComment(existingNote, paymentCrmComment),
+    note: stripPaymentCrmComment(asString(existingNote)),
     tags: withPaymentStatusTag(existingTags, paidPaymentTag),
     note_attributes: Array.from(noteAttributeByName.entries()).map(([name, value]) => ({ name, value })),
   };
